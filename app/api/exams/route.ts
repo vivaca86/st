@@ -59,7 +59,14 @@ export async function POST(request: Request) {
     const seed = crypto.randomUUID();
     const random = createRandom(seed);
     const selected: QuestionRow[] = [];
-    const shortages: Array<{ code: string; name: string; available: number; required: number }> = [];
+    const availability: Array<{ code: string; name: string; available: number }> = [];
+    const shortages: Array<{
+      code: string;
+      name: string;
+      available: number;
+      required: number;
+      missing: number;
+    }> = [];
 
     for (const subject of SUBJECTS) {
       const rows = await database
@@ -81,12 +88,18 @@ export async function POST(request: Request) {
       const uniqueRows = Array.from(
         new Map(rows.results.map((row) => [row.duplicate_group_id, row])).values(),
       );
+      availability.push({
+        code: subject.code,
+        name: subject.name,
+        available: uniqueRows.length,
+      });
       if (uniqueRows.length < requestedPerSubject) {
         shortages.push({
           code: subject.code,
           name: subject.name,
           available: uniqueRows.length,
           required: requestedPerSubject,
+          missing: requestedPerSubject - uniqueRows.length,
         });
         continue;
       }
@@ -110,6 +123,13 @@ export async function POST(request: Request) {
               : "일부 과목의 검수 완료 문제가 요청한 출제 수보다 적습니다.",
           code: "NOT_ENOUGH_VERIFIED_QUESTIONS",
           shortages,
+          availableUniqueTotal: availability.reduce(
+            (sum, subject) => sum + subject.available,
+            0,
+          ),
+          requiredTotal: requestedPerSubject * SUBJECTS.length,
+          subjectSections: buildSubjectSections(requestedPerSubject),
+          policy: "verified_unique_with_answer_only",
         },
         { status: 409 },
       );
@@ -165,7 +185,12 @@ export async function POST(request: Request) {
     );
 
     return Response.json(
-      { sessionId, totalQuestions: selected.length, mode },
+      {
+        sessionId,
+        totalQuestions: selected.length,
+        mode,
+        subjectSections: buildSubjectSections(requestedPerSubject),
+      },
       { status: 201 },
     );
   } catch (error) {
@@ -174,6 +199,17 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function buildSubjectSections(perSubject: number) {
+  return SUBJECTS.map((subject, index) => ({
+    code: subject.code,
+    name: subject.name,
+    order: subject.order,
+    startPosition: index * perSubject + 1,
+    endPosition: (index + 1) * perSubject,
+    questionCount: perSubject,
+  }));
 }
 
 function weightedPick(

@@ -1,4 +1,5 @@
 import { ensureDatabase, getD1 } from "../../../../db/runtime";
+import { SUBJECTS } from "../../../../lib/subjects";
 
 type ExamItemRow = {
   item_id: string;
@@ -74,8 +75,24 @@ export async function GET(
           : {}),
       };
     });
+    const subjectSections = SUBJECTS.flatMap((subject) => {
+      const subjectQuestions = questions.filter(
+        (question) => question.subjectCode === subject.code,
+      );
+      if (subjectQuestions.length === 0) return [];
+      return [
+        {
+          code: subject.code,
+          name: subject.name,
+          order: subject.order,
+          startPosition: subjectQuestions[0].position,
+          endPosition: subjectQuestions[subjectQuestions.length - 1].position,
+          questionCount: subjectQuestions.length,
+        },
+      ];
+    });
 
-    return Response.json({ session, questions });
+    return Response.json({ session, questions, subjectSections });
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "시험을 불러오지 못했습니다." },

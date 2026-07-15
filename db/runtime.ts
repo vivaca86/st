@@ -158,13 +158,31 @@ async function initializeDatabase() {
     ),
   );
 
-  await seedVerifiedQuestions(database, seedQuestions as SeedQuestion[]);
+  const verifiedSeed = seedQuestions as SeedQuestion[];
+  const primarySeedDocument = verifiedSeed[0]?.source_doc.normalize("NFC") ?? "";
+  const existingSeedCount = primarySeedDocument
+    ? await database
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM questions q
+           JOIN source_documents sd ON sd.id = q.source_document_id
+           WHERE sd.normalized_title = ?`,
+        )
+        .bind(primarySeedDocument)
+        .first<{ count: number }>()
+    : null;
+
+  // The hosted database persists between worker starts. Re-seed only when the
+  // bundled verified bank grows, avoiding 100 upserts on every cold start.
+  if (Number(existingSeedCount?.count ?? 0) < verifiedSeed.length) {
+    await seedVerifiedQuestions(database, verifiedSeed);
+  }
 }
 
 async function seedVerifiedQuestions(database: D1Database, rows: SeedQuestion[]) {
-  for (const raw of rows) {
+  const prepared = rows.flatMap((raw) => {
     const subjectCode = subjectCodeFromName(raw.subject);
-    if (!subjectCode || !raw.stem.trim() || raw.choices.length < 2) continue;
+    if (!subjectCode || !raw.stem.trim() || raw.choices.length < 2) return [];
 
     const documentId = `doc-${shortHash(`${subjectCode}:${raw.source_doc}`)}`;
     const questionId = `q-${shortHash(
@@ -178,78 +196,136 @@ async function seedVerifiedQuestions(database: D1Database, rows: SeedQuestion[])
       !raw.needs_review && answerIndex !== null && raw.confidence >= 0.9
         ? "verified"
         : "needs_review";
-
-    await database
-      .prepare(
-        `INSERT INTO source_documents
-          (id, subject_code, title, normalized_title)
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           title = excluded.title,
-           normalized_title = excluded.normalized_title`,
-      )
-      .bind(documentId, subjectCode, raw.source_doc, raw.source_doc.normalize("NFC"))
-      .run();
-
-    await database
-      .prepare(
-        `INSERT INTO questions (
-          id, subject_code, source_document_id, source_page,
-          source_question_no, stem, choices_json, answer_index, explanation,
-          duplicate_group_id, ocr_confidence, review_status,
-          importance_score, importance_reason, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(id) DO UPDATE SET
-          stem = excluded.stem,
-          choices_json = excluded.choices_json,
-          answer_index = excluded.answer_index,
-          explanation = excluded.explanation,
-          ocr_confidence = excluded.ocr_confidence,
-          review_status = excluded.review_status,
-          importance_score = excluded.importance_score,
-          importance_reason = excluded.importance_reason,
-          updated_at = CURRENT_TIMESTAMP`,
-      )
-      .bind(
-        questionId,
-        subjectCode,
-        documentId,
-        raw.source_page,
-        String(raw.source_no),
-        raw.stem.trim(),
-        JSON.stringify(raw.choices.map((choice) => choice.trim())),
-        answerIndex,
-        raw.explanation?.trim() ?? "",
-        duplicateGroupId,
-        raw.confidence,
-        reviewStatus,
-        raw.importance_score ?? 0,
-        raw.importance_reason ?? null,
-      )
-      .run();
-
     const searchableText = `${raw.stem} ${raw.explanation}`;
     const inferredIds = new Set([
       ...(raw.formula_keys ?? []),
       ...inferStudyItemIds(searchableText),
     ]);
 
-    for (const studyItem of STUDY_CATALOG.filter((item) =>
-      inferredIds.has(item.id),
-    )) {
-      await upsertStudyItem(database, studyItem);
-      await database
+    return [
+      {
+        raw,
+        subjectCode,
+        documentId,
+        questionId,
+        answerIndex,
+        duplicateGroupId,
+        reviewStatus,
+        studyItems: STUDY_CATALOG.filter((item) => inferredIds.has(item.id)),
+      },
+    ];
+  });
+
+  const documents = new Map<
+    string,
+    { id: string; subjectCode: string; title: string; normalizedTitle: string }
+  >();
+  for (const item of prepared) {
+    documents.set(item.documentId, {
+      id: item.documentId,
+      subjectCode: item.subjectCode,
+      title: item.raw.source_doc,
+      normalizedTitle: item.raw.source_doc.normalize("NFC"),
+    });
+  }
+
+  await runStatementBatches(
+    database,
+    Array.from(documents.values()).map((document) =>
+      database
         .prepare(
-          `INSERT INTO question_study_items
-            (question_id, study_item_id, role, confidence)
-           VALUES (?, ?, 'solution', ?)
-           ON CONFLICT(question_id, study_item_id) DO UPDATE SET
-             confidence = excluded.confidence`,
+          `INSERT INTO source_documents
+            (id, subject_code, title, normalized_title)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             title = excluded.title,
+             normalized_title = excluded.normalized_title`,
         )
-        .bind(questionId, studyItem.id, raw.confidence)
-        .run();
+        .bind(
+          document.id,
+          document.subjectCode,
+          document.title,
+          document.normalizedTitle,
+        ),
+    ),
+  );
+
+  await runStatementBatches(
+    database,
+    prepared.map((item) =>
+      database
+        .prepare(
+          `INSERT INTO questions (
+            id, subject_code, source_document_id, source_page,
+            source_question_no, stem, choices_json, answer_index, explanation,
+            duplicate_group_id, ocr_confidence, review_status,
+            importance_score, importance_reason, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(id) DO UPDATE SET
+            source_page = excluded.source_page,
+            source_question_no = excluded.source_question_no,
+            stem = excluded.stem,
+            choices_json = excluded.choices_json,
+            answer_index = excluded.answer_index,
+            explanation = excluded.explanation,
+            duplicate_group_id = excluded.duplicate_group_id,
+            ocr_confidence = excluded.ocr_confidence,
+            review_status = excluded.review_status,
+            importance_score = excluded.importance_score,
+            importance_reason = excluded.importance_reason,
+            updated_at = CURRENT_TIMESTAMP`,
+        )
+        .bind(
+          item.questionId,
+          item.subjectCode,
+          item.documentId,
+          item.raw.source_page,
+          String(item.raw.source_no),
+          item.raw.stem.trim(),
+          JSON.stringify(item.raw.choices.map((choice) => choice.trim())),
+          item.answerIndex,
+          item.raw.explanation?.trim() ?? "",
+          item.duplicateGroupId,
+          item.raw.confidence,
+          item.reviewStatus,
+          item.raw.importance_score ?? 0,
+          item.raw.importance_reason ?? null,
+        ),
+    ),
+  );
+
+  const referencedStudyItems = new Map<
+    string,
+    (typeof STUDY_CATALOG)[number]
+  >();
+  for (const item of prepared) {
+    for (const studyItem of item.studyItems) {
+      referencedStudyItems.set(studyItem.id, studyItem);
     }
   }
+
+  await runStatementBatches(
+    database,
+    Array.from(referencedStudyItems.values()).map((item) =>
+      prepareStudyItemUpsert(database, item),
+    ),
+  );
+  await runStatementBatches(
+    database,
+    prepared.flatMap((item) =>
+      item.studyItems.map((studyItem) =>
+        database
+          .prepare(
+            `INSERT INTO question_study_items
+              (question_id, study_item_id, role, confidence)
+             VALUES (?, ?, 'solution', ?)
+             ON CONFLICT(question_id, study_item_id) DO UPDATE SET
+               confidence = excluded.confidence`,
+          )
+          .bind(item.questionId, studyItem.id, item.raw.confidence),
+      ),
+    ),
+  );
 
   await database
     .prepare(
@@ -271,11 +347,21 @@ async function seedVerifiedQuestions(database: D1Database, rows: SeedQuestion[])
     .run();
 }
 
-async function upsertStudyItem(
+async function runStatementBatches(
+  database: D1Database,
+  statements: D1PreparedStatement[],
+) {
+  const batchSize = 50;
+  for (let index = 0; index < statements.length; index += batchSize) {
+    await database.batch(statements.slice(index, index + batchSize));
+  }
+}
+
+function prepareStudyItemUpsert(
   database: D1Database,
   item: (typeof STUDY_CATALOG)[number],
 ) {
-  await database
+  return database
     .prepare(
       `INSERT INTO study_items (
         id, subject_code, kind, title, prompt, content, canonical_key,
@@ -302,8 +388,7 @@ async function upsertStudyItem(
       item.conditions ?? null,
       item.units ?? null,
       item.caution ?? null,
-    )
-    .run();
+    );
 }
 
 function parseAnswerIndex(value: SeedQuestion["answer"], choiceCount: number) {

@@ -18,6 +18,7 @@ import type {
   OfflinePack,
   OfflineQuestion,
 } from "../lib/types";
+import { ExplanationText, FormulaText } from "./FormulaText";
 import { PencilScratchpad } from "./PencilScratchpad";
 
 type LocalSession = OfflineExamSession & {
@@ -57,6 +58,14 @@ const SUBJECT_NAMES: Record<string, string> = {
   "power-engineering": "전력공학",
   "circuit-theory": "회로이론",
   "electrical-regulations": "전기설비기술기준",
+};
+
+const SUBJECT_SHORT_NAMES: Record<string, string> = {
+  electromagnetics: "자기학",
+  "electric-machines": "기기",
+  "power-engineering": "전력",
+  "circuit-theory": "회로",
+  "electrical-regulations": "설비",
 };
 
 function displaySubjectName(code: string) {
@@ -128,6 +137,7 @@ export function OfflineWorkspace() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const sessionWritePending = useRef(false);
+  const currentQuestionButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -165,6 +175,16 @@ export function OfflineWorkspace() {
     };
   }, []);
 
+  useEffect(() => {
+    const button = currentQuestionButtonRef.current;
+    const scroller = button?.parentElement;
+    if (!button || !scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+    scroller.scrollTo({
+      left: button.offsetLeft - scroller.clientWidth / 2 + button.clientWidth / 2,
+      behavior: "smooth",
+    });
+  }, [session?.currentIndex]);
+
   const examQuestions = useMemo(() => {
     if (!pack || !session) return [];
     const byId = new Map(pack.questions.map((question) => [question.id, question]));
@@ -177,7 +197,6 @@ export function OfflineWorkspace() {
   const currentQuestion = session ? examQuestions[session.currentIndex] : null;
   const answeredCount = session ? Object.keys(session.answers).length : 0;
   const unansweredCount = session ? Math.max(0, examQuestions.length - answeredCount) : 0;
-  const checkedCount = session?.checkedQuestionIds?.length ?? 0;
   const availablePerSubject = pack
     ? Math.min(
         ...SUBJECTS.map(
@@ -491,16 +510,16 @@ export function OfflineWorkspace() {
                     {row.question.sourceDocument} p.{row.question.sourcePage ?? "-"}
                   </small>
                 </div>
-                <h3>{row.question.stem}</h3>
+                <h3><FormulaText text={row.question.stem} /></h3>
                 <div className="answer-line">
                   <span>
-                    선택 <b>{row.selectedIndex === null ? "미응답" : row.question.choices[row.selectedIndex]}</b>
+                    선택 <b>{row.selectedIndex === null ? "미응답" : <FormulaText text={row.question.choices[row.selectedIndex]} />}</b>
                   </span>
                   <span>
-                    정답 <b>{row.question.choices[row.question.answerIndex]}</b>
+                    정답 <b><FormulaText text={row.question.choices[row.question.answerIndex]} /></b>
                   </span>
                 </div>
-                <p className="explanation">{row.question.explanation}</p>
+                <p className="explanation"><ExplanationText text={row.question.explanation} /></p>
               </article>
             ))}
             {wrongRows.length === 0 && <div className="notice notice-success">모두 맞혔습니다.</div>}
@@ -515,19 +534,41 @@ export function OfflineWorkspace() {
     const checked = includesId(session.checkedQuestionIds, currentQuestion.id);
     const explanationOpen = includesId(session.explanationQuestionIds, currentQuestion.id);
     const selectedCorrect = selectedIndex === currentQuestion.answerIndex;
+    const subjectNavigation = SUBJECTS.flatMap((subject) => {
+      const subjectQuestions = examQuestions
+        .map((question, index) => ({ question, index }))
+        .filter(({ question }) => question.subjectCode === subject.code);
+      if (subjectQuestions.length === 0) return [];
+      const firstUnanswered = subjectQuestions.find(
+        ({ question }) => session.answers[question.id] === undefined,
+      );
+      return [{
+        code: subject.code,
+        index: firstUnanswered?.index ?? subjectQuestions[0].index,
+        answered: subjectQuestions.filter(
+          ({ question }) => session.answers[question.id] !== undefined,
+        ).length,
+        total: subjectQuestions.length,
+      }];
+    });
+    const currentSubjectQuestions = examQuestions
+      .map((question, index) => ({ question, index }))
+      .filter(({ question }) => question.subjectCode === currentQuestion.subjectCode);
 
     return (
-      <div className="exam-workspace offline-exam">
-        <section className="exam-topbar">
-          <div>
+      <div className="exam-workspace online-exam offline-exam">
+        <section className="exam-topbar online-exam-topbar offline-exam-topbar">
+          <div className="exam-progress-summary">
             <span className="eyebrow">기기 내 문제 DB · 무작위 출제</span>
-            <strong>
-              {answeredCount}/{examQuestions.length} 답 선택 · {checkedCount}개 확인
-            </strong>
+            <strong>답 {answeredCount}개 선택</strong>
           </div>
-          <span className="offline-network-badge is-local">서버 연결 없이 풀이 중</span>
-          <button className="button button-dark" onClick={submitExam} disabled={savingSession}>
-            채점하기
+          <button
+            className="button button-dark exam-submit-button"
+            onClick={submitExam}
+            disabled={savingSession}
+          >
+            <span className="exam-submit-label-full">채점하기</span>
+            <span className="exam-submit-label-mobile">채점</span>
           </button>
         </section>
         {error && <div className="notice notice-error">{error}</div>}
@@ -541,22 +582,39 @@ export function OfflineWorkspace() {
           </div>
         )}
         <div className="exam-layout has-pencil-scratchpad">
-          <aside className="question-map">
+          <aside className="question-map online-question-map offline-question-map">
             <div className="question-map-head">
-              <h2>문항표</h2>
-              <span>{examQuestions.length}문제</span>
+              <h2>과목·문항</h2>
+              <span>{currentSubjectQuestions.length}문제</span>
+            </div>
+            <div className="question-subject-tabs" aria-label="과목 바로가기">
+              {subjectNavigation.map((subject) => (
+                <button
+                  className={subject.code === currentQuestion.subjectCode ? "is-current" : ""}
+                  key={subject.code}
+                  disabled={savingSession}
+                  onClick={() => goToQuestion(subject.index)}
+                  aria-label={`${displaySubjectName(subject.code)} ${subject.answered}/${subject.total} 답안 선택`}
+                  aria-current={subject.code === currentQuestion.subjectCode ? "true" : undefined}
+                >
+                  <strong>{SUBJECT_SHORT_NAMES[subject.code] ?? displaySubjectName(subject.code)}</strong>
+                  <small>{subject.answered}/{subject.total}</small>
+                </button>
+              ))}
             </div>
             <div className="question-map-grid">
-              {examQuestions.map((question, index) => {
+              {currentSubjectQuestions.map(({ question, index }) => {
                 const answered = session.answers[question.id] !== undefined;
                 const answerChecked = includesId(session.checkedQuestionIds, question.id);
                 return (
                   <button
                     className={`${index === session.currentIndex ? "is-current" : ""}${answered ? " is-answered" : ""}${answerChecked ? " is-checked" : ""}`}
                     key={question.id}
+                    ref={index === session.currentIndex ? currentQuestionButtonRef : undefined}
                     onClick={() => goToQuestion(index)}
                     disabled={savingSession}
                     aria-label={`${index + 1}번${answered ? " 답 선택됨" : ""}${answerChecked ? " 정답 확인됨" : ""}`}
+                    aria-current={index === session.currentIndex ? "step" : undefined}
                   >
                     {index + 1}
                   </button>
@@ -573,7 +631,7 @@ export function OfflineWorkspace() {
               <span>p.{currentQuestion.sourcePage ?? "-"}</span>
             </div>
             <div className="question-number">문제 {session.currentIndex + 1}</div>
-            <h1>{currentQuestion.stem}</h1>
+            <h1><FormulaText text={currentQuestion.stem} /></h1>
             <div className="choice-list" role="radiogroup" aria-label="선택지">
               {currentQuestion.choices.map((choice, choiceIndex) => {
                 const selected = selectedIndex === choiceIndex;
@@ -612,7 +670,7 @@ export function OfflineWorkspace() {
                     disabled={checked || savingSession}
                   >
                     <span>{choiceIndex + 1}</span>
-                    <strong>{choice}</strong>
+                    <strong><FormulaText text={choice} /></strong>
                   </button>
                 );
               })}
@@ -633,12 +691,12 @@ export function OfflineWorkspace() {
               hidden={!explanationOpen}
             >
               <span>풀이 해설</span>
-              <p>{currentQuestion.explanation || "등록된 해설이 없습니다."}</p>
+              <p><ExplanationText text={currentQuestion.explanation || "등록된 해설이 없습니다."} /></p>
             </div>
 
-            <div className="question-actions question-actions-compact">
+            <div className="question-actions online-question-actions offline-question-actions">
               <button
-                className="question-arrow"
+                className="button button-quiet question-action-nav question-arrow"
                 disabled={session.currentIndex === 0 || savingSession}
                 onClick={() => goToQuestion(session.currentIndex - 1)}
                 aria-label="이전 문제"
@@ -646,28 +704,29 @@ export function OfflineWorkspace() {
               >
                 ←
               </button>
-              <div className="question-center-actions">
-                <button
-                  className="button button-primary answer-check-button"
-                  disabled={selectedIndex === undefined}
-                  onClick={checkAnswer}
-                  aria-disabled={checked || savingSession}
-                >
-                  {checked ? "확인 완료" : "정답 확인"}
-                </button>
-                <button
-                  className="button button-quiet explanation-button"
-                  disabled={!checked || savingSession}
-                  onClick={toggleExplanation}
-                  aria-expanded={explanationOpen}
-                  aria-controls={`offline-explanation-${currentQuestion.id}`}
-                >
-                  {explanationOpen ? "해설 닫기" : "해설"}
-                </button>
-                <span>{session.currentIndex + 1} / {examQuestions.length}</span>
+              <div className="question-action-center">
+                {checked ? (
+                  <button
+                    className="button button-primary explanation-toggle explanation-button"
+                    disabled={savingSession}
+                    onClick={toggleExplanation}
+                    aria-expanded={explanationOpen}
+                    aria-controls={`offline-explanation-${currentQuestion.id}`}
+                  >
+                    {explanationOpen ? "해설 닫기" : "해설 보기"}
+                  </button>
+                ) : (
+                  <button
+                    className="button button-primary answer-check-button"
+                    disabled={selectedIndex === undefined || savingSession}
+                    onClick={checkAnswer}
+                  >
+                    {savingSession ? "확인 중…" : "정답 확인"}
+                  </button>
+                )}
               </div>
               <button
-                className="question-arrow"
+                className="button button-quiet question-action-nav question-arrow"
                 disabled={session.currentIndex === examQuestions.length - 1 || savingSession}
                 onClick={() => goToQuestion(session.currentIndex + 1)}
                 aria-label="다음 문제"
@@ -791,12 +850,12 @@ export function OfflineWorkspace() {
                 <details key={item.id}>
                   <summary>
                     <span>{item.kind === "formula" ? "공식" : "이론"}</span>
-                    <strong>{item.prompt}</strong>
+                    <strong><FormulaText text={item.prompt} /></strong>
                     <small>{item.frequency}회</small>
                   </summary>
                   <div>
-                    <b>{item.content}</b>
-                    {item.caution && <p>주의: {item.caution}</p>}
+                    <b><FormulaText text={item.content} /></b>
+                    {item.caution && <p>주의: <FormulaText text={item.caution} /></p>}
                   </div>
                 </details>
               ))}

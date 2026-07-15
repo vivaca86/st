@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { SUBJECTS, subjectName } from "../lib/subjects";
 import type { StudyItemDto } from "../lib/types";
+import { FormulaText } from "./FormulaText";
 
 export function FormulaNotebook() {
   const [items, setItems] = useState<StudyItemDto[]>([]);
@@ -112,7 +113,7 @@ export function FormulaNotebook() {
                     <span>{item.subjectCode ? subjectName(item.subjectCode) : "공통"}</span>
                   </div>
                   <span className="flash-label">QUESTION</span>
-                  <h2>{item.prompt}</h2>
+                  <h2><FormulaText text={item.prompt} /></h2>
                   <div className="frequency-block">
                     <span>출제 연결 {item.frequency}회</span>
                     <div><i style={{ width: `${weight}%` }} /></div>
@@ -126,12 +127,12 @@ export function FormulaNotebook() {
                     <span>{item.title}</span>
                   </div>
                   <strong className={`formula-content${item.kind === "theory" ? " is-theory" : ""}`}>
-                    {item.content}
+                    <FormulaText text={item.content} />
                   </strong>
                   <dl>
-                    {item.conditions && <><dt>조건</dt><dd>{item.conditions}</dd></>}
-                    {item.units && <><dt>단위</dt><dd>{item.units}</dd></>}
-                    {item.caution && <><dt>주의</dt><dd>{item.caution}</dd></>}
+                    {item.conditions && <><dt>조건</dt><dd><FormulaText text={item.conditions} /></dd></>}
+                    {item.units && <><dt>단위</dt><dd><FormulaText text={item.units} /></dd></>}
+                    {item.caution && <><dt>주의</dt><dd><FormulaText text={item.caution} /></dd></>}
                   </dl>
                   {item.aliases.length > 0 && (
                     <div className="alias-row">

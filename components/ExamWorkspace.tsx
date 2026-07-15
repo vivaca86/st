@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { subjectName } from "../lib/subjects";
 import type { DashboardSubject, ExamQuestion } from "../lib/types";
+import { ExplanationText, FormulaText } from "./FormulaText";
 import { PencilScratchpad } from "./PencilScratchpad";
 
 type DashboardData = {
@@ -76,6 +77,14 @@ type ResultData = {
   results: ResultRow[];
 };
 
+const SUBJECT_SHORT_NAMES: Record<string, string> = {
+  electromagnetics: "자기학",
+  "electric-machines": "기기",
+  "power-engineering": "전력",
+  "circuit-theory": "회로",
+  "electrical-regulations": "설비",
+};
+
 export function ExamWorkspace() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [exam, setExam] = useState<ExamData | null>(null);
@@ -88,6 +97,9 @@ export function ExamWorkspace() {
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [checkingItemId, setCheckingItemId] = useState<string | null>(null);
   const [openExplanations, setOpenExplanations] = useState<Record<string, boolean>>({});
+  const answerSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const checkingItemRef = useRef<string | null>(null);
+  const currentQuestionButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -101,6 +113,16 @@ export function ExamWorkspace() {
     const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, [exam?.session.id, result]);
+
+  useEffect(() => {
+    const button = currentQuestionButtonRef.current;
+    const scroller = button?.parentElement;
+    if (!button || !scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+    scroller.scrollTo({
+      left: button.offsetLeft - scroller.clientWidth / 2 + button.clientWidth / 2,
+      behavior: "smooth",
+    });
+  }, [currentIndex]);
 
   const answeredCount = useMemo(
     () => exam?.questions.filter((question) => question.selectedIndex !== null).length ?? 0,
@@ -129,6 +151,8 @@ export function ExamWorkspace() {
       setSavingItemId(null);
       setCheckingItemId(null);
       setOpenExplanations({});
+      answerSavePromiseRef.current = null;
+      checkingItemRef.current = null;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "시험을 만들지 못했습니다.");
     } finally {
@@ -139,7 +163,7 @@ export function ExamWorkspace() {
   async function selectChoice(choiceIndex: number) {
     if (!exam || result) return;
     const question = exam.questions[currentIndex];
-    if (question.checked || savingItemId !== null) return;
+    if (question.checked || savingItemId !== null || checkingItemRef.current !== null) return;
     const previousSelectedIndex = question.selectedIndex;
     setSavingItemId(question.itemId);
     setError("");
@@ -149,32 +173,42 @@ export function ExamWorkspace() {
         index === currentIndex ? { ...item, selectedIndex: choiceIndex } : item,
       ),
     });
-    try {
-      const response = await fetch(`/api/exams/${exam.session.id}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: question.itemId, selectedIndex: choiceIndex }),
-      });
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.error ?? "답을 저장하지 못했습니다.");
+    const savePromise = (async () => {
+      try {
+        const response = await fetch(`/api/exams/${exam.session.id}/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemId: question.itemId, selectedIndex: choiceIndex }),
+        });
+        if (!response.ok) {
+          const payload = await response.json();
+          throw new Error(payload.error ?? "답을 저장하지 못했습니다.");
+        }
+        return true;
+      } catch (reason) {
+        setExam((currentExam) =>
+          currentExam
+            ? {
+                ...currentExam,
+                questions: currentExam.questions.map((item) =>
+                  item.itemId === question.itemId
+                    ? { ...item, selectedIndex: previousSelectedIndex }
+                    : item,
+                ),
+              }
+            : currentExam,
+        );
+        setError(reason instanceof Error ? reason.message : "답을 저장하지 못했습니다.");
+        return false;
+      } finally {
+        setSavingItemId(null);
       }
-    } catch (reason) {
-      setExam((currentExam) =>
-        currentExam
-          ? {
-              ...currentExam,
-              questions: currentExam.questions.map((item) =>
-                item.itemId === question.itemId
-                  ? { ...item, selectedIndex: previousSelectedIndex }
-                  : item,
-              ),
-            }
-          : currentExam,
-      );
-      setError(reason instanceof Error ? reason.message : "답을 저장하지 못했습니다.");
-    } finally {
-      setSavingItemId(null);
+    })();
+
+    answerSavePromiseRef.current = savePromise;
+    await savePromise;
+    if (answerSavePromiseRef.current === savePromise) {
+      answerSavePromiseRef.current = null;
     }
   }
 
@@ -184,15 +218,18 @@ export function ExamWorkspace() {
     if (
       question.selectedIndex === null ||
       question.checked ||
-      savingItemId !== null ||
-      checkingItemId === question.itemId
+      checkingItemRef.current !== null
     ) {
       return;
     }
 
+    checkingItemRef.current = question.itemId;
     setCheckingItemId(question.itemId);
     setError("");
     try {
+      const pendingSave = answerSavePromiseRef.current;
+      if (pendingSave && !(await pendingSave)) return;
+
       const response = await fetch(`/api/exams/${exam.session.id}/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -222,7 +259,8 @@ export function ExamWorkspace() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "정답을 확인하지 못했습니다.");
     } finally {
-      setCheckingItemId(null);
+      if (checkingItemRef.current === question.itemId) checkingItemRef.current = null;
+      setCheckingItemId((current) => (current === question.itemId ? null : current));
     }
   }
 
@@ -355,23 +393,41 @@ export function ExamWorkspace() {
   const question = exam.questions[currentIndex];
   const unanswered = exam.questions.length - answeredCount;
   const explanationOpen = Boolean(openExplanations[question.itemId]);
+  const subjectNavigation = Array.from(
+    new Set(exam.questions.map((item) => item.subjectCode)),
+  ).map((code) => {
+    const subjectQuestions = exam.questions
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.subjectCode === code);
+    const firstUnanswered = subjectQuestions.find(({ item }) => item.selectedIndex === null);
+    return {
+      code,
+      index: firstUnanswered?.index ?? subjectQuestions[0]?.index ?? 0,
+      answered: subjectQuestions.filter(({ item }) => item.selectedIndex !== null).length,
+      total: subjectQuestions.length,
+    };
+  });
+  const currentSubjectQuestions = exam.questions
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.subjectCode === question.subjectCode);
 
   return (
-    <div className="exam-workspace">
-      <section className="exam-topbar">
-        <div>
+    <div className="exam-workspace online-exam">
+      <section className="exam-topbar online-exam-topbar">
+        <div className="exam-progress-summary">
           <span className="eyebrow">{exam.session.mode === "priority" ? "중요문제" : "랜덤 모의고사"}</span>
-          <strong>{answeredCount}/{exam.questions.length} 답안 선택</strong>
+          <strong>답 {answeredCount}개 선택</strong>
         </div>
         <div className="exam-clock" aria-label={`경과 시간 ${formatTime(elapsed)}`}>
           <span>경과 시간</span><b>{formatTime(elapsed)}</b>
         </div>
         <button
-          className="button button-dark"
+          className="button button-dark exam-submit-button"
           onClick={submitExam}
           disabled={busy || savingItemId !== null || checkingItemId !== null}
         >
-          답안 제출
+          <span className="exam-submit-label-full">답안 제출</span>
+          <span className="exam-submit-label-mobile">제출</span>
         </button>
       </section>
 
@@ -392,19 +448,40 @@ export function ExamWorkspace() {
       )}
 
       <div className="exam-layout has-pencil-scratchpad">
-        <aside className="question-map">
+        <aside className="question-map online-question-map">
           <div className="question-map-head">
-            <h2>문항표</h2><span>{exam.questions.length}문제</span>
+            <h2>과목·문항</h2><span>{currentSubjectQuestions.length}문제</span>
+          </div>
+          <div className="question-subject-tabs" aria-label="과목 바로가기">
+            {subjectNavigation.map((subject) => (
+              <button
+                className={subject.code === question.subjectCode ? "is-current" : ""}
+                key={subject.code}
+                disabled={checkingItemId !== null}
+                onClick={() => {
+                  setCurrentIndex(subject.index);
+                  setConfirmSubmit(false);
+                }}
+                aria-label={`${subjectName(subject.code)} ${subject.answered}/${subject.total} 답안 선택`}
+                aria-current={subject.code === question.subjectCode ? "true" : undefined}
+              >
+                <strong>{SUBJECT_SHORT_NAMES[subject.code] ?? subjectName(subject.code)}</strong>
+                <small>{subject.answered}/{subject.total}</small>
+              </button>
+            ))}
           </div>
           <div className="question-map-grid">
-            {exam.questions.map((item, index) => (
+            {currentSubjectQuestions.map(({ item, index }) => (
               <button
                 className={`${index === currentIndex ? "is-current" : ""}${
                   item.selectedIndex !== null ? " is-answered" : ""
                 }${item.checked ? " is-checked" : ""}`}
                 key={item.itemId}
+                ref={index === currentIndex ? currentQuestionButtonRef : undefined}
+                disabled={checkingItemId !== null}
                 onClick={() => { setCurrentIndex(index); setConfirmSubmit(false); }}
                 aria-label={`${item.position}번${item.selectedIndex !== null ? " 답안 선택됨" : ""}${item.checked ? " 정답 확인됨" : ""}`}
+                aria-current={index === currentIndex ? "step" : undefined}
               >
                 {item.position}
               </button>
@@ -426,7 +503,7 @@ export function ExamWorkspace() {
             {question.sourceQuestionNo && <span>원문 {question.sourceQuestionNo}번</span>}
           </div>
           <div className="question-number">문제 {question.position}</div>
-          <h1>{question.stem}</h1>
+          <h1><FormulaText text={question.stem} /></h1>
 
           <div className="choice-list" role="radiogroup" aria-label="선택지">
             {question.choices.map((choice, choiceIndex) => {
@@ -446,7 +523,7 @@ export function ExamWorkspace() {
                   key={`${question.itemId}-${choiceIndex}`}
                   onClick={() => selectChoice(choiceIndex)}
                   onKeyDown={(event) => {
-                    if (question.checked) return;
+                    if (question.checked || savingItemId !== null || checkingItemId !== null) return;
                     let nextIndex: number | null = null;
                     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
                       nextIndex = (choiceIndex + 1) % question.choices.length;
@@ -467,7 +544,11 @@ export function ExamWorkspace() {
                   role="radio"
                   aria-checked={selected}
                   tabIndex={selected || (question.selectedIndex === null && choiceIndex === 0) ? 0 : -1}
-                  disabled={Boolean(question.checked)}
+                  disabled={
+                    Boolean(question.checked) ||
+                    savingItemId !== null ||
+                    checkingItemId !== null
+                  }
                   style={
                     correctChoice
                       ? { borderColor: "#24946b", background: "#eefbf5" }
@@ -479,7 +560,7 @@ export function ExamWorkspace() {
                   }
                 >
                   <span>{choiceIndex + 1}</span>
-                  <strong>{choice}</strong>
+                  <strong><FormulaText text={choice} /></strong>
                   {correctChoice && (
                     <em className="choice-result-label" style={{ marginLeft: "auto", color: "#177451", fontStyle: "normal", fontWeight: 850 }}>
                       정답
@@ -520,66 +601,51 @@ export function ExamWorkspace() {
           >
             <span className="eyebrow">이 문제는 이렇게 풉니다</span>
             <p className="explanation" style={{ marginBottom: 0 }}>
-              {question.explanation || "등록된 해설이 없습니다."}
+              <ExplanationText text={question.explanation || "등록된 해설이 없습니다."} />
             </p>
           </section>
 
-          <div className="question-actions">
+          <div className="question-actions online-question-actions">
             <button
               className="button button-quiet question-action-nav"
-              disabled={currentIndex === 0}
+              disabled={currentIndex === 0 || checkingItemId !== null}
               onClick={() => { setCurrentIndex((index) => Math.max(0, index - 1)); setConfirmSubmit(false); }}
               aria-label="이전 문제"
               title="이전 문제"
-              style={{ width: 42, padding: 0 }}
             >
               ←
             </button>
-            <div
-              className="question-action-center"
-              style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 8 }}
-            >
-              <span style={{ color: "var(--muted)", fontSize: 10, marginRight: 4 }}>
-                {currentIndex + 1} / {exam.questions.length}
-              </span>
-              <button
-                className="button button-primary answer-check-button"
-                onClick={checkAnswer}
-                disabled={question.selectedIndex === null}
-                aria-disabled={
-                  Boolean(question.checked) ||
-                  savingItemId !== null ||
-                  checkingItemId === question.itemId
-                }
-              >
-                {checkingItemId === question.itemId
-                  ? "확인 중…"
-                  : question.checked
-                    ? "정답 확인됨"
-                    : "정답 확인"}
-              </button>
-              <button
-                className="button button-quiet explanation-toggle"
-                disabled={!question.checked}
-                onClick={() =>
-                  setOpenExplanations((current) => ({
-                    ...current,
-                    [question.itemId]: !current[question.itemId],
-                  }))
-                }
-                aria-expanded={explanationOpen}
-                aria-controls={`explanation-${question.itemId}`}
-              >
-                {explanationOpen ? "해설 닫기" : "해설"}
-              </button>
+            <div className="question-action-center">
+              {question.checked ? (
+                <button
+                  className="button button-primary explanation-toggle"
+                  onClick={() =>
+                    setOpenExplanations((current) => ({
+                      ...current,
+                      [question.itemId]: !current[question.itemId],
+                    }))
+                  }
+                  aria-expanded={explanationOpen}
+                  aria-controls={`explanation-${question.itemId}`}
+                >
+                  {explanationOpen ? "해설 닫기" : "해설 보기"}
+                </button>
+              ) : (
+                <button
+                  className="button button-primary answer-check-button"
+                  onClick={checkAnswer}
+                  disabled={question.selectedIndex === null || checkingItemId !== null}
+                >
+                  {checkingItemId === question.itemId ? "확인 중…" : "정답 확인"}
+                </button>
+              )}
             </div>
             <button
               className="button button-primary question-action-nav"
-              disabled={currentIndex === exam.questions.length - 1}
+              disabled={currentIndex === exam.questions.length - 1 || checkingItemId !== null}
               onClick={() => { setCurrentIndex((index) => Math.min(exam.questions.length - 1, index + 1)); setConfirmSubmit(false); }}
               aria-label="다음 문제"
               title="다음 문제"
-              style={{ width: 42, padding: 0 }}
             >
               →
             </button>
@@ -641,9 +707,9 @@ function ExamResult({ result, onRestart }: { result: ResultData; onRestart: () =
           return (
             <article className={failed ? "is-failed" : ""} key={subjectScore.code}>
               <span>{subjectName(subjectScore.code)}</span>
-              <strong>{score}<small>/100점</small></strong>
+              <strong>{score}<small>점</small></strong>
               <small>
-                {subjectScore.correct}/{subjectScore.total} 정답
+                {subjectScore.total}문제 중 {subjectScore.correct}개 정답
                 {isOfficialFullExam ? ` · 문항당 ${subjectScore.pointsPerQuestion}점` : ""}
                 {failed ? " · 과락" : ""}
               </small>
@@ -664,12 +730,12 @@ function ExamResult({ result, onRestart }: { result: ResultData; onRestart: () =
                 <span>{subjectName(row.subjectCode)} · {row.position}번</span>
                 <small>{row.sourceDocument} p.{row.sourcePage ?? "–"}</small>
               </div>
-              <h3>{row.stem}</h3>
+              <h3><FormulaText text={row.stem} /></h3>
               <p className="answer-line">
-                내 답: <b>{row.selectedIndex === null ? "미선택" : row.choices[row.selectedIndex]}</b>
-                <span>정답: <b>{row.choices[row.answerIndex]}</b></span>
+                내 답: <b>{row.selectedIndex === null ? "미선택" : <FormulaText text={row.choices[row.selectedIndex]} />}</b>
+                <span>정답: <b><FormulaText text={row.choices[row.answerIndex]} /></b></span>
               </p>
-              <p className="explanation">{row.explanation}</p>
+              <p className="explanation"><ExplanationText text={row.explanation} /></p>
             </article>
           ))}
         </div>

@@ -1,0 +1,36 @@
+.formulaText {
+  white-space: inherit;
+}
+
+.fraction {
+  display: inline-block;
+  margin-inline: 0.08em;
+  vertical-align: -0.42em;
+  font-family: "Cambria Math", Cambria, "Times New Roman", serif;
+  font-size: 1.06em;
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1;
+}
+
+.fraction mfrac {
+  math-style: compact;
+}
+
+.fraction mtext {
+  font-family: "Cambria Math", Cambria, "Times New Roman", serif;
+}
+
+.explanationText {
+  display: grid;
+  gap: 0.58em;
+  white-space: normal;
+}
+
+.explanationLine {
+  display: block;
+}
+
+.explanationMarker {
+  margin-right: 0.42em;
+  font-weight: 900;
+}
