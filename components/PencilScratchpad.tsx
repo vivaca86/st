@@ -185,6 +185,7 @@ function createStroke(
 export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
   const canvasRegionId = useId();
   const helpId = useId();
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const strokesRef = useRef<ScratchpadStroke[]>([]);
   const activeStrokeRef = useRef<ScratchpadStroke | null>(null);
@@ -220,6 +221,8 @@ export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
     if (!canvas) return;
     const context = canvas.getContext("2d");
     if (!context) return;
+    const backgroundCanvas = backgroundCanvasRef.current;
+    const backgroundContext = backgroundCanvas?.getContext("2d") ?? null;
     const { width, height, dpr } = canvasSizeRef.current;
 
     context.save();
@@ -229,7 +232,14 @@ export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const pageAspectRatio = pageAspectRatioRef.current ?? (height > 0 ? width / height : 1);
-    drawPaper(context, pageAspectRatio, width, height);
+    if (backgroundCanvas && backgroundContext) {
+      backgroundContext.save();
+      backgroundContext.setTransform(1, 0, 0, 1, 0, 0);
+      backgroundContext.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+      backgroundContext.restore();
+      backgroundContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawPaper(backgroundContext, pageAspectRatio, width, height);
+    }
     for (const stroke of strokesRef.current) {
       drawStroke(context, stroke, width, height, pageAspectRatio);
     }
@@ -292,6 +302,14 @@ export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
       if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
         canvas.width = pixelWidth;
         canvas.height = pixelHeight;
+      }
+      const backgroundCanvas = backgroundCanvasRef.current;
+      if (
+        backgroundCanvas &&
+        (backgroundCanvas.width !== pixelWidth || backgroundCanvas.height !== pixelHeight)
+      ) {
+        backgroundCanvas.width = pixelWidth;
+        backgroundCanvas.height = pixelHeight;
       }
       canvasSizeRef.current = { width: bounds.width, height: bounds.height, dpr };
       renderCanvas();
@@ -608,6 +626,11 @@ export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
 
           <div className="pencil-scratchpad__paper">
             <canvas
+              ref={backgroundCanvasRef}
+              className="pencil-scratchpad__paper-canvas"
+              aria-hidden="true"
+            />
+            <canvas
               ref={canvasRef}
               className="pencil-scratchpad__canvas"
               aria-label="Apple Pencil, 손가락 또는 마우스로 풀이를 적는 영역"
@@ -749,10 +772,20 @@ export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
           background: #eef2f6;
           box-shadow: inset 0 1px 4px rgba(31, 41, 55, 0.04);
         }
+        .pencil-scratchpad__paper-canvas,
         .pencil-scratchpad__canvas {
+          position: absolute;
+          inset: 0;
           display: block;
           width: 100%;
           height: 100%;
+        }
+        .pencil-scratchpad__paper-canvas {
+          z-index: 1;
+          pointer-events: none;
+        }
+        .pencil-scratchpad__canvas {
+          z-index: 2;
           cursor: crosshair;
           touch-action: none;
           overscroll-behavior: contain;
@@ -772,6 +805,7 @@ export function PencilScratchpad({ storageKey }: PencilScratchpadProps) {
           background: rgba(255, 254, 250, 0.78);
           color: #64748b;
           font-size: 0.88rem;
+          z-index: 3;
           pointer-events: none;
         }
         .pencil-scratchpad__help,
