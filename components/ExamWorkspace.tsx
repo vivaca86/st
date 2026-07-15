@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { subjectName } from "../lib/subjects";
 import type { DashboardSubject, ExamQuestion } from "../lib/types";
+import { PencilScratchpad } from "./PencilScratchpad";
 
 type DashboardData = {
   subjects: DashboardSubject[];
@@ -390,7 +391,7 @@ export function ExamWorkspace() {
         </div>
       )}
 
-      <div className="exam-layout">
+      <div className="exam-layout has-pencil-scratchpad">
         <aside className="question-map">
           <div className="question-map-head">
             <h2>문항표</h2><span>{exam.questions.length}문제</span>
@@ -584,6 +585,7 @@ export function ExamWorkspace() {
             </button>
           </div>
         </section>
+        <PencilScratchpad storageKey={`question:${question.questionId}`} />
       </div>
     </div>
   );

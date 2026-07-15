@@ -1,6 +1,6 @@
 // Bump this immutable release id whenever the worker or app shell changes.
 // A waiting worker must never write into the cache owned by the active worker.
-const RELEASE_ID = "2026-07-15-offline-v3";
+const RELEASE_ID = "2026-07-15-offline-v4";
 const SHELL_CACHE = `jeonsangi-shell-${RELEASE_ID}`;
 const PACK_CACHE = `jeonsangi-pack-${RELEASE_ID}`;
 const APP_SHELL = [

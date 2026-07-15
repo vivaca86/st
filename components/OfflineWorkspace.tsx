@@ -18,6 +18,7 @@ import type {
   OfflinePack,
   OfflineQuestion,
 } from "../lib/types";
+import { PencilScratchpad } from "./PencilScratchpad";
 
 type LocalSession = OfflineExamSession & {
   checkedQuestionIds?: string[];
@@ -539,7 +540,7 @@ export function OfflineWorkspace() {
             </div>
           </div>
         )}
-        <div className="exam-layout">
+        <div className="exam-layout has-pencil-scratchpad">
           <aside className="question-map">
             <div className="question-map-head">
               <h2>문항표</h2>
@@ -676,6 +677,7 @@ export function OfflineWorkspace() {
               </button>
             </div>
           </section>
+          <PencilScratchpad storageKey={`question:${currentQuestion.id}`} />
         </div>
       </div>
     );

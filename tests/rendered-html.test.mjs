@@ -174,18 +174,32 @@ test("ships a versioned D1-backed offline problem pack without user attempts", a
 });
 
 test("provides installable PWA shell and IndexedDB local exam persistence", async () => {
-  const [manifest, worker, offlinePage, offlineDatabase, shell] = await Promise.all([
+  const [
+    manifest,
+    worker,
+    onlineExam,
+    offlinePage,
+    offlineDatabase,
+    scratchpad,
+    scratchpadDatabase,
+    styles,
+    shell,
+  ] = await Promise.all([
     source("public/manifest.webmanifest"),
     source("public/sw.js"),
+    source("components/ExamWorkspace.tsx"),
     source("components/OfflineWorkspace.tsx"),
     source("lib/offline-db.ts"),
+    source("components/PencilScratchpad.tsx"),
+    source("lib/scratchpad-db.ts"),
+    source("app/globals.css"),
     source("components/AppShell.tsx"),
   ]);
 
   const parsedManifest = JSON.parse(manifest);
   assert.equal(parsedManifest.display, "standalone");
   assert.equal(parsedManifest.start_url, "/offline");
-  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v3"/);
+  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v4"/);
   assert.match(worker, /const SHELL_CACHE = `jeonsangi-shell-\$\{RELEASE_ID\}`/);
   assert.match(worker, /const PACK_CACHE = `jeonsangi-pack-\$\{RELEASE_ID\}`/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
@@ -204,5 +218,16 @@ test("provides installable PWA shell and IndexedDB local exam persistence", asyn
   );
   assert.match(offlinePage, /startExam\(20\)/);
   assert.match(offlinePage, /개인 학습용/);
+  assert.match(onlineExam, /PencilScratchpad/);
+  assert.match(offlinePage, /PencilScratchpad/);
+  assert.match(scratchpad, /onPointerDown/);
+  assert.match(scratchpad, /getCoalescedEvents/);
+  assert.match(scratchpad, /setPointerCapture/);
+  assert.match(scratchpad, /devicePixelRatio/);
+  assert.match(scratchpad, /touch-action: none/);
+  assert.match(scratchpadDatabase, /indexedDB\.open/);
+  assert.match(scratchpadDatabase, /writeQueues/);
+  assert.match(styles, /max-width: 1366px/);
+  assert.match(styles, /has-pencil-scratchpad/);
   assert.match(shell, /href: "\/offline"/);
 });
