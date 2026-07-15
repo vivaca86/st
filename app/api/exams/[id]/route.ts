@@ -6,6 +6,7 @@ type ExamItemRow = {
   position: number;
   subject_code: string;
   selected_index: number | null;
+  is_correct: number | null;
   snapshot_json: string;
 };
 
@@ -32,7 +33,7 @@ export async function GET(
     const itemRows = await database
       .prepare(
         `SELECT id AS item_id, question_id, position, subject_code,
-          selected_index, snapshot_json
+          selected_index, is_correct, snapshot_json
          FROM exam_items
          WHERE exam_session_id = ?
          ORDER BY position`,
@@ -44,10 +45,13 @@ export async function GET(
       const snapshot = JSON.parse(row.snapshot_json) as {
         stem: string;
         choices: string[];
+        answerIndex: number;
+        explanation: string;
         sourceDocument: string;
         sourcePage: number | null;
         sourceQuestionNo: string | null;
       };
+      const checked = row.is_correct !== null;
       return {
         itemId: row.item_id,
         questionId: row.question_id,
@@ -60,6 +64,14 @@ export async function GET(
         sourceQuestionNo: snapshot.sourceQuestionNo,
         stem: snapshot.stem,
         choices: snapshot.choices,
+        checked,
+        ...(checked
+          ? {
+              answerIndex: Number(snapshot.answerIndex),
+              isCorrect: Boolean(row.is_correct),
+              explanation: snapshot.explanation,
+            }
+          : {}),
       };
     });
 

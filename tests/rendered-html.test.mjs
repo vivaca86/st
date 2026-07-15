@@ -80,6 +80,7 @@ test("provides every API route and both persistence bindings", async () => {
     "app/api/exams/route.ts",
     "app/api/exams/[id]/route.ts",
     "app/api/exams/[id]/answer/route.ts",
+    "app/api/exams/[id]/check/route.ts",
     "app/api/exams/[id]/submit/route.ts",
     "app/api/study-items/route.ts",
     "app/api/review/route.ts",
@@ -90,6 +91,66 @@ test("provides every API route and both persistence bindings", async () => {
   const hosting = JSON.parse(await source(".openai/hosting.json"));
   assert.equal(hosting.d1, "DB");
   assert.equal(hosting.r2, "QUESTION_ASSETS");
+});
+
+test("locks checked answers and reports official five-subject scoring", async () => {
+  const [
+    createRoute,
+    examRoute,
+    answerRoute,
+    checkRoute,
+    submitRoute,
+    examWorkspace,
+    offlineWorkspace,
+    types,
+  ] = await Promise.all([
+      source("app/api/exams/route.ts"),
+      source("app/api/exams/[id]/route.ts"),
+      source("app/api/exams/[id]/answer/route.ts"),
+      source("app/api/exams/[id]/check/route.ts"),
+      source("app/api/exams/[id]/submit/route.ts"),
+      source("components/ExamWorkspace.tsx"),
+      source("components/OfflineWorkspace.tsx"),
+      source("lib/types.ts"),
+    ]);
+
+  assert.match(answerRoute, /AND is_correct IS NULL/);
+  assert.match(answerRoute, /정답을 확인한 문항은 답안을 변경할 수 없습니다/);
+  assert.match(checkRoute, /json_extract\(snapshot_json, '\$\.answerIndex'\)/);
+  assert.match(checkRoute, /is_correct IS NULL/);
+  assert.match(checkRoute, /toCheckedResponse/);
+  assert.match(checkRoute, /answerIndex: Number\(snapshot\.answerIndex\)/);
+  assert.match(checkRoute, /explanation: snapshot\.explanation/);
+  assert.match(examRoute, /const checked = row\.is_correct !== null/);
+  assert.match(examRoute, /\.\.\.\(checked/);
+  assert.match(types, /checked: boolean/);
+  assert.match(types, /answerIndex\?: number/);
+  assert.match(submitRoute, /Number\(session\.total_questions\) === 100/);
+  assert.match(submitRoute, /subject\.total === 20/);
+  assert.match(submitRoute, /subject\.score < 40/);
+  assert.match(submitRoute, /overallAverage >= 60/);
+  assert.match(submitRoute, /minimumSubjectScore: 40/);
+  assert.match(submitRoute, /passingAverage: 60/);
+  assert.match(submitRoute, /SET status = 'submitting'/);
+  assert.match(submitRoute, /WHERE id = \? AND status = 'in_progress'/);
+  assert.match(createRoute, /uniqueRows\.length < requestedPerSubject/);
+  assert.match(examWorkspace, /aria-label="이전 문제"/);
+  assert.match(examWorkspace, /aria-label="다음 문제"/);
+  assert.match(examWorkspace, /정답 확인/);
+  assert.match(examWorkspace, /해설 닫기/);
+  assert.match(examWorkspace, /officialResult\.evaluated/);
+  assert.match(examWorkspace, /\[exam\?\.session\.id, result\]/);
+  assert.match(examWorkspace, /setElapsed\(\(value\) => value \+ 1\)/);
+  assert.match(examWorkspace, /정답 확인됨/);
+  assert.match(examWorkspace, /ArrowRight/);
+  assert.match(offlineWorkspace, /uniqueFamilies/);
+  assert.match(offlineWorkspace, /shuffled\(candidates\)\.slice/);
+  assert.match(offlineWorkspace, /checkedQuestionIds/);
+  assert.match(offlineWorkspace, /subject\.score < 40/);
+  assert.match(offlineWorkspace, /averageScore >= 60/);
+  assert.match(offlineWorkspace, /await saveOfflineSession\(nextSession\)/);
+  assert.match(offlineWorkspace, /navigator\.storage\?\.persist/);
+  assert.match(offlineWorkspace, /미응답은 오답으로 채점됩니다/);
 });
 
 test("ships a versioned D1-backed offline problem pack without user attempts", async () => {
@@ -124,7 +185,7 @@ test("provides installable PWA shell and IndexedDB local exam persistence", asyn
   const parsedManifest = JSON.parse(manifest);
   assert.equal(parsedManifest.display, "standalone");
   assert.equal(parsedManifest.start_url, "/offline");
-  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v2"/);
+  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v3"/);
   assert.match(worker, /const SHELL_CACHE = `jeonsangi-shell-\$\{RELEASE_ID\}`/);
   assert.match(worker, /const PACK_CACHE = `jeonsangi-pack-\$\{RELEASE_ID\}`/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);

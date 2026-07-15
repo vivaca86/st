@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       const uniqueRows = Array.from(
         new Map(rows.results.map((row) => [row.duplicate_group_id, row])).values(),
       );
-      if (mode === "full" && uniqueRows.length < requestedPerSubject) {
+      if (uniqueRows.length < requestedPerSubject) {
         shortages.push({
           code: subject.code,
           name: subject.name,
@@ -104,7 +104,10 @@ export async function POST(request: Request) {
     if (shortages.length > 0) {
       return Response.json(
         {
-          error: "검수 완료 문제가 과목당 20개에 아직 도달하지 않았습니다.",
+          error:
+            mode === "full"
+              ? "검수 완료 문제가 과목당 20개에 아직 도달하지 않았습니다."
+              : "일부 과목의 검수 완료 문제가 요청한 출제 수보다 적습니다.",
           code: "NOT_ENOUGH_VERIFIED_QUESTIONS",
           shortages,
         },

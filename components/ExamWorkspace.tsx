@@ -17,7 +17,22 @@ type ExamData = {
     status: string;
     total_questions: number;
   };
-  questions: ExamQuestion[];
+  questions: ExamQuestionView[];
+};
+
+type ExamQuestionView = ExamQuestion & {
+  checked?: boolean;
+  answerIndex?: number | null;
+  isCorrect?: boolean | null;
+  explanation?: string | null;
+};
+
+type CheckData = {
+  itemId: string;
+  checked: boolean;
+  answerIndex: number;
+  isCorrect: boolean;
+  explanation: string;
 };
 
 type ResultRow = {
@@ -40,7 +55,23 @@ type ResultData = {
   correctCount: number;
   totalQuestions: number;
   score: number;
-  subjectScores: Array<{ code: string; correct: number; total: number }>;
+  overallAverage: number;
+  subjectScores: Array<{
+    code: string;
+    name: string;
+    correct: number;
+    total: number;
+    score: number;
+    pointsPerQuestion: number;
+    isFailed: boolean | null;
+  }>;
+  officialResult: {
+    evaluated: boolean;
+    passed: boolean | null;
+    hasSubjectFailure: boolean | null;
+    minimumSubjectScore: number;
+    passingAverage: number;
+  };
   results: ResultRow[];
 };
 
@@ -53,6 +84,9 @@ export function ExamWorkspace() {
   const [error, setError] = useState("");
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
+  const [checkingItemId, setCheckingItemId] = useState<string | null>(null);
+  const [openExplanations, setOpenExplanations] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -62,14 +96,10 @@ export function ExamWorkspace() {
   }, []);
 
   useEffect(() => {
-    if (!exam || result) return;
-    const startedAt = Date.now();
-    const timer = window.setInterval(
-      () => setElapsed(Math.floor((Date.now() - startedAt) / 1000)),
-      1000,
-    );
+    if (!exam?.session.id || result) return;
+    const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
-  }, [exam, result]);
+  }, [exam?.session.id, result]);
 
   const answeredCount = useMemo(
     () => exam?.questions.filter((question) => question.selectedIndex !== null).length ?? 0,
@@ -95,6 +125,9 @@ export function ExamWorkspace() {
       setResult(null);
       setCurrentIndex(0);
       setElapsed(0);
+      setSavingItemId(null);
+      setCheckingItemId(null);
+      setOpenExplanations({});
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "시험을 만들지 못했습니다.");
     } finally {
@@ -105,6 +138,10 @@ export function ExamWorkspace() {
   async function selectChoice(choiceIndex: number) {
     if (!exam || result) return;
     const question = exam.questions[currentIndex];
+    if (question.checked || savingItemId !== null) return;
+    const previousSelectedIndex = question.selectedIndex;
+    setSavingItemId(question.itemId);
+    setError("");
     setExam({
       ...exam,
       questions: exam.questions.map((item, index) =>
@@ -122,7 +159,69 @@ export function ExamWorkspace() {
         throw new Error(payload.error ?? "답을 저장하지 못했습니다.");
       }
     } catch (reason) {
+      setExam((currentExam) =>
+        currentExam
+          ? {
+              ...currentExam,
+              questions: currentExam.questions.map((item) =>
+                item.itemId === question.itemId
+                  ? { ...item, selectedIndex: previousSelectedIndex }
+                  : item,
+              ),
+            }
+          : currentExam,
+      );
       setError(reason instanceof Error ? reason.message : "답을 저장하지 못했습니다.");
+    } finally {
+      setSavingItemId(null);
+    }
+  }
+
+  async function checkAnswer() {
+    if (!exam || result) return;
+    const question = exam.questions[currentIndex];
+    if (
+      question.selectedIndex === null ||
+      question.checked ||
+      savingItemId !== null ||
+      checkingItemId === question.itemId
+    ) {
+      return;
+    }
+
+    setCheckingItemId(question.itemId);
+    setError("");
+    try {
+      const response = await fetch(`/api/exams/${exam.session.id}/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: question.itemId }),
+      });
+      const payload = (await response.json()) as CheckData & { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "정답을 확인하지 못했습니다.");
+
+      setExam((currentExam) =>
+        currentExam
+          ? {
+              ...currentExam,
+              questions: currentExam.questions.map((item) =>
+                item.itemId === question.itemId
+                  ? {
+                      ...item,
+                      checked: payload.checked,
+                      answerIndex: payload.answerIndex,
+                      isCorrect: payload.isCorrect,
+                      explanation: payload.explanation,
+                    }
+                  : item,
+              ),
+            }
+          : currentExam,
+      );
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "정답을 확인하지 못했습니다.");
+    } finally {
+      setCheckingItemId(null);
     }
   }
 
@@ -181,7 +280,7 @@ export function ExamWorkspace() {
             </div>
             <ul>
               <li>검수 완료 문제만 출제</li>
-              <li>제출 전에는 정답 비공개</li>
+              <li>정답 확인 뒤 선택 답안 고정</li>
               <li>과목별 점수 자동 분석</li>
             </ul>
             <button
@@ -254,6 +353,7 @@ export function ExamWorkspace() {
 
   const question = exam.questions[currentIndex];
   const unanswered = exam.questions.length - answeredCount;
+  const explanationOpen = Boolean(openExplanations[question.itemId]);
 
   return (
     <div className="exam-workspace">
@@ -265,7 +365,11 @@ export function ExamWorkspace() {
         <div className="exam-clock" aria-label={`경과 시간 ${formatTime(elapsed)}`}>
           <span>경과 시간</span><b>{formatTime(elapsed)}</b>
         </div>
-        <button className="button button-dark" onClick={submitExam} disabled={busy}>
+        <button
+          className="button button-dark"
+          onClick={submitExam}
+          disabled={busy || savingItemId !== null || checkingItemId !== null}
+        >
           답안 제출
         </button>
       </section>
@@ -276,7 +380,12 @@ export function ExamWorkspace() {
           <span>아직 {unanswered}문제가 비어 있습니다. 그대로 제출할까요?</span>
           <div>
             <button onClick={() => setConfirmSubmit(false)}>계속 풀기</button>
-            <button onClick={submitExam}>제출하기</button>
+            <button
+              onClick={submitExam}
+              disabled={busy || savingItemId !== null || checkingItemId !== null}
+            >
+              제출하기
+            </button>
           </div>
         </div>
       )}
@@ -291,10 +400,10 @@ export function ExamWorkspace() {
               <button
                 className={`${index === currentIndex ? "is-current" : ""}${
                   item.selectedIndex !== null ? " is-answered" : ""
-                }`}
+                }${item.checked ? " is-checked" : ""}`}
                 key={item.itemId}
                 onClick={() => { setCurrentIndex(index); setConfirmSubmit(false); }}
-                aria-label={`${item.position}번${item.selectedIndex !== null ? " 답안 선택됨" : ""}`}
+                aria-label={`${item.position}번${item.selectedIndex !== null ? " 답안 선택됨" : ""}${item.checked ? " 정답 확인됨" : ""}`}
               >
                 {item.position}
               </button>
@@ -303,6 +412,7 @@ export function ExamWorkspace() {
           <div className="question-map-legend">
             <span><i className="legend-current" /> 현재</span>
             <span><i className="legend-answered" /> 답안 선택</span>
+            <span><i className="legend-checked" /> 정답 확인</span>
             <span><i /> 미선택</span>
           </div>
         </aside>
@@ -320,40 +430,158 @@ export function ExamWorkspace() {
           <div className="choice-list" role="radiogroup" aria-label="선택지">
             {question.choices.map((choice, choiceIndex) => {
               const selected = question.selectedIndex === choiceIndex;
+              const correctChoice = question.checked && question.answerIndex === choiceIndex;
+              const wrongChoice = question.checked && selected && !correctChoice;
+              const choiceClassName = [
+                selected ? "is-selected" : "",
+                correctChoice ? "is-correct" : "",
+                wrongChoice ? "is-wrong" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
                 <button
-                  className={selected ? "is-selected" : ""}
+                  className={choiceClassName}
                   key={`${question.itemId}-${choiceIndex}`}
                   onClick={() => selectChoice(choiceIndex)}
+                  onKeyDown={(event) => {
+                    if (question.checked) return;
+                    let nextIndex: number | null = null;
+                    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+                      nextIndex = (choiceIndex + 1) % question.choices.length;
+                    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+                      nextIndex = (choiceIndex - 1 + question.choices.length) % question.choices.length;
+                    } else if (event.key === "Home") {
+                      nextIndex = 0;
+                    } else if (event.key === "End") {
+                      nextIndex = question.choices.length - 1;
+                    }
+                    if (nextIndex === null) return;
+                    event.preventDefault();
+                    void selectChoice(nextIndex);
+                    event.currentTarget.parentElement
+                      ?.querySelectorAll<HTMLButtonElement>('[role="radio"]')
+                      [nextIndex]?.focus();
+                  }}
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={selected || (question.selectedIndex === null && choiceIndex === 0) ? 0 : -1}
+                  disabled={Boolean(question.checked)}
+                  style={
+                    correctChoice
+                      ? { borderColor: "#24946b", background: "#eefbf5" }
+                      : wrongChoice
+                        ? { borderColor: "#d85d4d", background: "#fff3f0" }
+                        : question.checked
+                          ? { opacity: 0.68 }
+                          : undefined
+                  }
                 >
                   <span>{choiceIndex + 1}</span>
                   <strong>{choice}</strong>
+                  {correctChoice && (
+                    <em className="choice-result-label" style={{ marginLeft: "auto", color: "#177451", fontStyle: "normal", fontWeight: 850 }}>
+                      정답
+                    </em>
+                  )}
+                  {wrongChoice && (
+                    <em className="choice-result-label" style={{ marginLeft: "auto", color: "#a84431", fontStyle: "normal", fontWeight: 850 }}>
+                      내 선택
+                    </em>
+                  )}
                 </button>
               );
             })}
           </div>
 
+          {question.checked && (
+            <div
+              className={`notice ${question.isCorrect ? "notice-success" : "notice-error"} answer-check-feedback`}
+              role="status"
+              style={{ marginTop: 16 }}
+            >
+              {question.isCorrect
+                ? "정답입니다. 잘 풀었어요."
+                : `오답입니다. 정답은 ${
+                    question.answerIndex === null || question.answerIndex === undefined
+                      ? "확인할 수 없습니다"
+                      : `${question.answerIndex + 1}번`
+                  }입니다.`}
+            </div>
+          )}
+
+          <section
+            id={`explanation-${question.itemId}`}
+            className="explanation-panel"
+            aria-label="문제 해설"
+            hidden={!question.checked || !explanationOpen}
+            style={{ marginTop: 16, padding: 20, border: "1px solid #dce4ef", borderRadius: 14, background: "#f8faff" }}
+          >
+            <span className="eyebrow">이 문제는 이렇게 풉니다</span>
+            <p className="explanation" style={{ marginBottom: 0 }}>
+              {question.explanation || "등록된 해설이 없습니다."}
+            </p>
+          </section>
+
           <div className="question-actions">
             <button
-              className="button button-quiet"
+              className="button button-quiet question-action-nav"
               disabled={currentIndex === 0}
               onClick={() => { setCurrentIndex((index) => Math.max(0, index - 1)); setConfirmSubmit(false); }}
+              aria-label="이전 문제"
+              title="이전 문제"
+              style={{ width: 42, padding: 0 }}
             >
-              ← 이전 문제
+              ←
             </button>
-            <span>{currentIndex + 1} / {exam.questions.length}</span>
-            {currentIndex < exam.questions.length - 1 ? (
+            <div
+              className="question-action-center"
+              style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <span style={{ color: "var(--muted)", fontSize: 10, marginRight: 4 }}>
+                {currentIndex + 1} / {exam.questions.length}
+              </span>
               <button
-                className="button button-primary"
-                onClick={() => { setCurrentIndex((index) => index + 1); setConfirmSubmit(false); }}
+                className="button button-primary answer-check-button"
+                onClick={checkAnswer}
+                disabled={question.selectedIndex === null}
+                aria-disabled={
+                  Boolean(question.checked) ||
+                  savingItemId !== null ||
+                  checkingItemId === question.itemId
+                }
               >
-                다음 문제 →
+                {checkingItemId === question.itemId
+                  ? "확인 중…"
+                  : question.checked
+                    ? "정답 확인됨"
+                    : "정답 확인"}
               </button>
-            ) : (
-              <button className="button button-dark" onClick={submitExam}>채점하기</button>
-            )}
+              <button
+                className="button button-quiet explanation-toggle"
+                disabled={!question.checked}
+                onClick={() =>
+                  setOpenExplanations((current) => ({
+                    ...current,
+                    [question.itemId]: !current[question.itemId],
+                  }))
+                }
+                aria-expanded={explanationOpen}
+                aria-controls={`explanation-${question.itemId}`}
+              >
+                {explanationOpen ? "해설 닫기" : "해설"}
+              </button>
+            </div>
+            <button
+              className="button button-primary question-action-nav"
+              disabled={currentIndex === exam.questions.length - 1}
+              onClick={() => { setCurrentIndex((index) => Math.min(exam.questions.length - 1, index + 1)); setConfirmSubmit(false); }}
+              aria-label="다음 문제"
+              title="다음 문제"
+              style={{ width: 42, padding: 0 }}
+            >
+              →
+            </button>
           </div>
         </section>
       </div>
@@ -363,28 +591,64 @@ export function ExamWorkspace() {
 
 function ExamResult({ result, onRestart }: { result: ResultData; onRestart: () => void }) {
   const wrong = result.results.filter((row) => !row.isCorrect);
+  const isOfficialFullExam = result.officialResult.evaluated;
+  const passed = isOfficialFullExam && result.officialResult.passed === true;
+  const displayScore = isOfficialFullExam ? result.overallAverage : result.score;
+  const failedSubjectNames = result.subjectScores
+    .filter((subjectScore) => subjectScore.isFailed === true)
+    .map((subjectScore) => subjectName(subjectScore.code));
   return (
     <div className="page-stack result-page">
-      <section className="result-hero">
+      <section
+        className={`result-hero${isOfficialFullExam ? ` result-verdict ${passed ? "is-passed" : "is-failed"}` : ""}`}
+      >
         <div className="score-ring">
-          <strong>{result.score}</strong><span>점</span>
+          <strong>{displayScore}</strong><span>점</span>
         </div>
         <div>
-          <span className="eyebrow">채점 완료</span>
-          <h1>{result.correctCount}문제를 맞혔어요.</h1>
-          <p>틀린 문제는 공식·이론 카드와 연결해 다시 볼 수 있습니다.</p>
+          <span className="eyebrow">{isOfficialFullExam ? "실전 모의고사 채점 완료" : "채점 완료"}</span>
+          <h1>
+            {isOfficialFullExam
+              ? passed
+                ? "합격 기준을 통과했어요."
+                : "이번 결과는 불합격이에요."
+              : `${result.correctCount}문제를 맞혔어요.`}
+          </h1>
+          {isOfficialFullExam ? (
+            <p>
+              전체 평균 {result.overallAverage}점 · 합격 기준 평균 {result.officialResult.passingAverage}점 이상
+              {failedSubjectNames.length > 0
+                ? ` · 과락(${result.officialResult.minimumSubjectScore}점 미만): ${failedSubjectNames.join(", ")}`
+                : " · 과락 과목 없음"}
+            </p>
+          ) : (
+            <p>틀린 문제는 공식·이론 카드와 연결해 다시 볼 수 있습니다.</p>
+          )}
           <button className="button button-primary" onClick={onRestart}>새 시험 만들기</button>
         </div>
       </section>
 
       <section className="score-grid">
-        {result.subjectScores.map((score) => (
-          <article key={score.code}>
-            <span>{subjectName(score.code)}</span>
-            <strong>{score.correct}<small>/{score.total}</small></strong>
-            <div className="progress-track"><span style={{ width: `${(score.correct / score.total) * 100}%` }} /></div>
-          </article>
-        ))}
+        {result.subjectScores.map((subjectScore) => {
+          const score = Number.isFinite(subjectScore.score)
+            ? subjectScore.score
+            : subjectScore.total
+              ? Math.round((subjectScore.correct / subjectScore.total) * 100)
+              : 0;
+          const failed = isOfficialFullExam && subjectScore.isFailed === true;
+          return (
+            <article className={failed ? "is-failed" : ""} key={subjectScore.code}>
+              <span>{subjectName(subjectScore.code)}</span>
+              <strong>{score}<small>/100점</small></strong>
+              <small>
+                {subjectScore.correct}/{subjectScore.total} 정답
+                {isOfficialFullExam ? ` · 문항당 ${subjectScore.pointsPerQuestion}점` : ""}
+                {failed ? " · 과락" : ""}
+              </small>
+              <div className="progress-track"><span style={{ width: `${score}%` }} /></div>
+            </article>
+          );
+        })}
       </section>
 
       <section>

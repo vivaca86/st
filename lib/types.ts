@@ -36,6 +36,10 @@ export type ExamQuestion = {
   stem: string;
   choices: string[];
   selectedIndex: number | null;
+  checked: boolean;
+  answerIndex?: number;
+  isCorrect?: boolean;
+  explanation?: string;
 };
 
 export type StudyItemDto = {
