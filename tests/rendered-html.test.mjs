@@ -254,7 +254,7 @@ test("provides installable PWA shell and IndexedDB local exam persistence", asyn
   const parsedManifest = JSON.parse(manifest);
   assert.equal(parsedManifest.display, "standalone");
   assert.equal(parsedManifest.start_url, "/offline");
-  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v5"/);
+  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v6"/);
   assert.match(worker, /const SHELL_CACHE = `jeonsangi-shell-\$\{RELEASE_ID\}`/);
   assert.match(worker, /const PACK_CACHE = `jeonsangi-pack-\$\{RELEASE_ID\}`/);
   assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
