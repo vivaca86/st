@@ -172,11 +172,9 @@ test("locks checked answers and reports official five-subject scoring", async ()
   assert.match(examWorkspace, /officialResult\.evaluated/);
   assert.match(examWorkspace, /\[exam\?\.session\.id, result\]/);
   assert.match(examWorkspace, /setElapsed\(\(value\) => value \+ 1\)/);
-  assert.match(examWorkspace, /정답 확인됨/);
   assert.match(examWorkspace, /ArrowRight/);
   assert.match(examWorkspace, /answerSavePromiseRef/);
   assert.match(examWorkspace, /pendingSave && !\(await pendingSave\)/);
-  assert.match(examWorkspace, /currentSubjectQuestions\.map/);
   assert.match(examWorkspace, /question-subject-tabs/);
   assert.match(offlineWorkspace, /uniqueFamilies/);
   assert.match(offlineWorkspace, /shuffled\(candidates\)\.slice/);
@@ -186,7 +184,6 @@ test("locks checked answers and reports official five-subject scoring", async ()
   assert.match(offlineWorkspace, /await saveOfflineSession\(nextSession\)/);
   assert.match(offlineWorkspace, /navigator\.storage\?\.persist/);
   assert.match(offlineWorkspace, /미응답은 오답으로 채점됩니다/);
-  assert.match(offlineWorkspace, /currentSubjectQuestions\.map/);
   assert.match(offlineWorkspace, /question-subject-tabs/);
   assert.doesNotMatch(offlineWorkspace, /session\.currentIndex \+ 1\} \/ \{examQuestions\.length/);
 });

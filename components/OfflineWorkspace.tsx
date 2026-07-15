@@ -137,7 +137,6 @@ export function OfflineWorkspace() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const sessionWritePending = useRef(false);
-  const currentQuestionButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -174,16 +173,6 @@ export function OfflineWorkspace() {
       window.removeEventListener("offline", updateConnection);
     };
   }, []);
-
-  useEffect(() => {
-    const button = currentQuestionButtonRef.current;
-    const scroller = button?.parentElement;
-    if (!button || !scroller || scroller.scrollWidth <= scroller.clientWidth) return;
-    scroller.scrollTo({
-      left: button.offsetLeft - scroller.clientWidth / 2 + button.clientWidth / 2,
-      behavior: "smooth",
-    });
-  }, [session?.currentIndex]);
 
   const examQuestions = useMemo(() => {
     if (!pack || !session) return [];
@@ -560,7 +549,6 @@ export function OfflineWorkspace() {
         <section className="exam-topbar online-exam-topbar offline-exam-topbar">
           <div className="exam-progress-summary">
             <span className="eyebrow">기기 내 문제 DB · 무작위 출제</span>
-            <strong>답 {answeredCount}개 선택</strong>
           </div>
           <button
             className="button button-dark exam-submit-button"
@@ -601,25 +589,6 @@ export function OfflineWorkspace() {
                   <small>{subject.answered}/{subject.total}</small>
                 </button>
               ))}
-            </div>
-            <div className="question-map-grid">
-              {currentSubjectQuestions.map(({ question, index }) => {
-                const answered = session.answers[question.id] !== undefined;
-                const answerChecked = includesId(session.checkedQuestionIds, question.id);
-                return (
-                  <button
-                    className={`${index === session.currentIndex ? "is-current" : ""}${answered ? " is-answered" : ""}${answerChecked ? " is-checked" : ""}`}
-                    key={question.id}
-                    ref={index === session.currentIndex ? currentQuestionButtonRef : undefined}
-                    onClick={() => goToQuestion(index)}
-                    disabled={savingSession}
-                    aria-label={`${index + 1}번${answered ? " 답 선택됨" : ""}${answerChecked ? " 정답 확인됨" : ""}`}
-                    aria-current={index === session.currentIndex ? "step" : undefined}
-                  >
-                    {index + 1}
-                  </button>
-                );
-              })}
             </div>
             <button className="offline-leave" onClick={leaveExam} disabled={savingSession}>시험 나가기</button>
           </aside>

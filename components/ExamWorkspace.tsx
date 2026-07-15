@@ -99,7 +99,6 @@ export function ExamWorkspace() {
   const [openExplanations, setOpenExplanations] = useState<Record<string, boolean>>({});
   const answerSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const checkingItemRef = useRef<string | null>(null);
-  const currentQuestionButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -113,16 +112,6 @@ export function ExamWorkspace() {
     const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, [exam?.session.id, result]);
-
-  useEffect(() => {
-    const button = currentQuestionButtonRef.current;
-    const scroller = button?.parentElement;
-    if (!button || !scroller || scroller.scrollWidth <= scroller.clientWidth) return;
-    scroller.scrollTo({
-      left: button.offsetLeft - scroller.clientWidth / 2 + button.clientWidth / 2,
-      behavior: "smooth",
-    });
-  }, [currentIndex]);
 
   const answeredCount = useMemo(
     () => exam?.questions.filter((question) => question.selectedIndex !== null).length ?? 0,
@@ -298,8 +287,6 @@ export function ExamWorkspace() {
         <section className="page-title-row">
           <div>
             <span className="eyebrow">랜덤 출제</span>
-            <h1>오늘은 어떤 방식으로 풀까요?</h1>
-            <p>같은 유형은 한 번만, 5과목은 같은 비율로 출제됩니다.</p>
           </div>
           <div className="setup-summary">
             <strong>{dashboard?.verifiedTotal ?? "–"}</strong>
@@ -416,7 +403,6 @@ export function ExamWorkspace() {
       <section className="exam-topbar online-exam-topbar">
         <div className="exam-progress-summary">
           <span className="eyebrow">{exam.session.mode === "priority" ? "중요문제" : "랜덤 모의고사"}</span>
-          <strong>답 {answeredCount}개 선택</strong>
         </div>
         <div className="exam-clock" aria-label={`경과 시간 ${formatTime(elapsed)}`}>
           <span>경과 시간</span><b>{formatTime(elapsed)}</b>
@@ -469,29 +455,6 @@ export function ExamWorkspace() {
                 <small>{subject.answered}/{subject.total}</small>
               </button>
             ))}
-          </div>
-          <div className="question-map-grid">
-            {currentSubjectQuestions.map(({ item, index }) => (
-              <button
-                className={`${index === currentIndex ? "is-current" : ""}${
-                  item.selectedIndex !== null ? " is-answered" : ""
-                }${item.checked ? " is-checked" : ""}`}
-                key={item.itemId}
-                ref={index === currentIndex ? currentQuestionButtonRef : undefined}
-                disabled={checkingItemId !== null}
-                onClick={() => { setCurrentIndex(index); setConfirmSubmit(false); }}
-                aria-label={`${item.position}번${item.selectedIndex !== null ? " 답안 선택됨" : ""}${item.checked ? " 정답 확인됨" : ""}`}
-                aria-current={index === currentIndex ? "step" : undefined}
-              >
-                {item.position}
-              </button>
-            ))}
-          </div>
-          <div className="question-map-legend">
-            <span><i className="legend-current" /> 현재</span>
-            <span><i className="legend-answered" /> 답안 선택</span>
-            <span><i className="legend-checked" /> 정답 확인</span>
-            <span><i /> 미선택</span>
           </div>
         </aside>
 
