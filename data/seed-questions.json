@@ -1,0 +1,427 @@
+[
+  {
+    "subject": "전기자기학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 1,
+    "source_no": 4,
+    "stem": "정전용량이 20 μF인 평행판 축전기에 0.01 C의 전하를 충전했다. 두 평행판 사이를 비유전율 10인 유전체로 채우면 유전체 표면의 분극 전하량은?",
+    "choices": [
+      "-0.009 C",
+      "-0.01 C",
+      "-0.09 C",
+      "-0.1 C"
+    ],
+    "answer": 1,
+    "explanation": "분극 전하량은 Q′ = -Q(1-1/εr)이므로 -0.01×(1-1/10) = -0.009 C이다.",
+    "confidence": 0.96,
+    "needs_review": false
+  },
+  {
+    "subject": "전기자기학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 2,
+    "source_no": 6,
+    "stem": "모든 전기장치를 접지시키는 근본적인 이유는?",
+    "choices": [
+      "편의상 대지는 영전위이기 때문이다.",
+      "대지는 습기가 있어 전류가 잘 흐르기 때문이다.",
+      "영상전하로 생각하면 땅속은 음전하이기 때문이다.",
+      "지구의 정전용량이 커서 전위가 거의 일정하기 때문이다."
+    ],
+    "answer": 4,
+    "explanation": "지구는 정전용량이 매우 커서 전하가 출입해도 전위 변화가 거의 없으므로 접지의 기준 전위로 사용한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기자기학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 2,
+    "source_no": 7,
+    "stem": "유전체의 초전효과(pyroelectric effect)에 대한 설명으로 옳지 않은 것은?",
+    "choices": [
+      "온도 변화와 관계없이 일어난다.",
+      "자발 분극을 가진 유전체에서 생긴다.",
+      "초전효과가 있는 유전체를 공기 중에 놓으면 중화된다.",
+      "열에너지를 전기에너지로 변환하는 데 이용된다."
+    ],
+    "answer": 1,
+    "explanation": "초전효과는 자발 분극을 가진 유전체에서 온도가 변할 때 분극이 변하여 나타나는 현상이다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기자기학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 4,
+    "source_no": 14,
+    "stem": "자기 인덕턴스와 상호 인덕턴스의 관계에서 결합계수 k가 가질 수 있는 범위는?",
+    "choices": [
+      "0 ≤ k ≤ 1",
+      "0 < k < 1",
+      "1 ≤ k ≤ 2",
+      "0 < k ≤ 10"
+    ],
+    "answer": 1,
+    "explanation": "k=0은 자기적으로 완전히 비결합된 상태, k=1은 완전 결합된 상태이므로 0≤k≤1이다.",
+    "confidence": 0.98,
+    "needs_review": false
+  },
+  {
+    "subject": "전기자기학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 5,
+    "source_no": 20,
+    "stem": "자계 속 도선에 전류를 흘릴 때 도선을 자계와 60°로 놓아 받는 힘은 30°로 놓았을 때의 약 몇 배인가?",
+    "choices": [
+      "1.2배",
+      "1.7배",
+      "2.4배",
+      "3.6배"
+    ],
+    "answer": 2,
+    "explanation": "F=BIℓsinθ이므로 F60/F30=sin60°/sin30°=√3≈1.732이다.",
+    "confidence": 0.98,
+    "needs_review": false
+  },
+  {
+    "subject": "전력공학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 6,
+    "source_no": 25,
+    "stem": "이상전압의 발생 우려가 가장 적은 중성점 접지방식은?",
+    "choices": [
+      "저항접지방식",
+      "소호리액터접지방식",
+      "직접접지방식",
+      "비접지방식"
+    ],
+    "answer": 3,
+    "explanation": "직접접지는 1선 지락 시 건전상의 대지전압 상승이 작아 이상전압을 억제한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전력공학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 8,
+    "source_no": 31,
+    "stem": "전력손실을 감소시키기 위한 직접적인 노력으로 볼 수 없는 것은?",
+    "choices": [
+      "승압공사 조기 준공",
+      "노후설비 교체",
+      "선로 등가저항 계산",
+      "설비 운전역률 개선"
+    ],
+    "answer": 3,
+    "explanation": "승압, 전선 교체, 선로 단축, 역률 개선 등은 손실을 직접 줄이지만 등가저항 계산 자체는 손실 저감 조치가 아니다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전력공학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 9,
+    "source_no": 35,
+    "stem": "선택접지계전기의 용도는?",
+    "choices": [
+      "단일 회선에서 접지전류 크기를 선택한다.",
+      "단일 회선에서 접지전류 방향을 선택한다.",
+      "단일 회선에서 접지사고 지속시간을 선택한다.",
+      "다회선에서 접지고장 회선을 선택한다."
+    ],
+    "answer": 4,
+    "explanation": "선택지락계전기(SGR)는 병행 다회선에서 지락사고가 난 회선만 선택 차단한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전력공학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 9,
+    "source_no": 38,
+    "stem": "발전기나 변압기의 내부고장 검출에 주로 사용되는 계전기는?",
+    "choices": [
+      "비율차동계전기",
+      "역상계전기",
+      "과전류계전기",
+      "과전압계전기"
+    ],
+    "answer": 1,
+    "explanation": "비율차동계전기는 보호구간 양단 전류의 차를 검출하므로 발전기·변압기 내부고장 보호에 적합하다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전력공학",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 9,
+    "source_no": 39,
+    "stem": "동기조상기에 대한 설명으로 옳은 것은?",
+    "choices": [
+      "무부하로 운전되는 동기전동기로 역률을 개선한다.",
+      "전부하로 운전되는 동기전동기로 역률을 개선한다.",
+      "무부하로 운전되는 동기발전기로 역률을 개선한다.",
+      "전부하로 운전되는 동기발전기로 역률을 개선한다."
+    ],
+    "answer": 1,
+    "explanation": "동기조상기는 무부하 동기전동기의 여자전류를 조정하여 진상·지상 무효전력을 제어하고 역률을 개선한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기기기",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 11,
+    "source_no": 47,
+    "stem": "변압기유가 갖추어야 할 조건으로 옳지 않은 것은?",
+    "choices": [
+      "점도가 높을 것",
+      "인화점이 높을 것",
+      "절연내력이 클 것",
+      "응고점이 낮을 것"
+    ],
+    "answer": 1,
+    "explanation": "변압기유는 냉각과 순환이 잘되도록 점도가 낮아야 하며 절연내력과 인화점은 높고 응고점은 낮아야 한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기기기",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 12,
+    "source_no": 50,
+    "stem": "실리콘 다이오드의 특성으로 옳지 않은 것은?",
+    "choices": [
+      "전압강하가 크다.",
+      "정류비가 크다.",
+      "허용온도가 높다.",
+      "역내전압이 크다."
+    ],
+    "answer": 1,
+    "explanation": "실리콘 다이오드는 허용온도·정류비·역내전압이 높고 순방향 전압강하가 비교적 작다.",
+    "confidence": 0.98,
+    "needs_review": false
+  },
+  {
+    "subject": "전기기기",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 12,
+    "source_no": 52,
+    "stem": "변압기의 개방회로 시험으로 구할 수 없는 것은?",
+    "choices": [
+      "무부하전류",
+      "철손",
+      "동손",
+      "여자임피던스"
+    ],
+    "answer": 3,
+    "explanation": "개방회로(무부하) 시험에서는 무부하전류, 철손, 여자어드미턴스를 구한다. 동손은 주로 단락시험으로 구한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기기기",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 13,
+    "source_no": 54,
+    "stem": "3상 유도전동기의 2차 저항을 2배로 하면 2배가 되는 것은?",
+    "choices": [
+      "토크",
+      "전류",
+      "역률",
+      "슬립"
+    ],
+    "answer": 4,
+    "explanation": "최대토크가 발생하는 슬립은 2차 저항에 비례하므로 2차 저항을 2배로 하면 그 슬립도 2배가 된다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기기기",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 14,
+    "source_no": 60,
+    "stem": "변압기의 병렬운전 조건으로 필요하지 않은 것은?",
+    "choices": [
+      "권수비가 같을 것",
+      "각 변압기의 1차·2차 정격전압과 극성이 같을 것",
+      "저항강하와 리액턴스강하가 각 변압기 용량에 반비례할 것",
+      "3상식에서는 상회전 방향과 위상변위가 같을 것"
+    ],
+    "answer": 3,
+    "explanation": "병렬운전에는 극성·권수비·정격전압·상회전·위상변위가 같아야 하고, %임피던스와 %저항강하/%리액턴스강하의 비가 같아야 한다.",
+    "confidence": 0.98,
+    "needs_review": false
+  },
+  {
+    "subject": "회로이론",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 15,
+    "source_no": 62,
+    "stem": "e=100√2sinωt+75√2sin3ωt+20√2sin5ωt[V]를 R-L 직렬회로에 가한다. R=4 Ω, ωL=1 Ω일 때 제3고조파 전류의 실효값은?",
+    "choices": [
+      "75 A",
+      "15 A",
+      "17 A",
+      "20 A"
+    ],
+    "answer": 2,
+    "explanation": "제3고조파 임피던스는 √(R²+(3ωL)²)=√(4²+3²)=5 Ω이므로 I3=75/5=15 A이다.",
+    "confidence": 0.94,
+    "needs_review": false
+  },
+  {
+    "subject": "회로이론",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 15,
+    "source_no": 63,
+    "stem": "3상 불평형 전압에서 역상전압이 50 V, 정상전압이 200 V, 영상전압이 10 V일 때 전압 불평형률은?",
+    "choices": [
+      "1%",
+      "5%",
+      "25%",
+      "50%"
+    ],
+    "answer": 3,
+    "explanation": "전압 불평형률은 역상전압/정상전압×100이므로 50/200×100=25%이다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "회로이론",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 16,
+    "source_no": 66,
+    "stem": "R-L-C 직렬회로에서 L=8×10⁻³ H, C=2×10⁻⁷ F이다. 임계진동이 되기 위한 R은?",
+    "choices": [
+      "0.01 Ω",
+      "100 Ω",
+      "200 Ω",
+      "400 Ω"
+    ],
+    "answer": 4,
+    "explanation": "임계진동 조건 R²=4L/C에서 R=√(4L/C)=400 Ω이다.",
+    "confidence": 0.96,
+    "needs_review": false
+  },
+  {
+    "subject": "회로이론",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 16,
+    "source_no": 70,
+    "stem": "전압의 순시값이 v=20+60sinωt[V]일 때 실효값은?",
+    "choices": [
+      "46.9 V",
+      "51.6 V",
+      "56.6 V",
+      "63.3 V"
+    ],
+    "answer": 1,
+    "explanation": "직류분과 교류분의 실효값을 제곱합하면 √(20²+(60/√2)²)=46.9 V이다.",
+    "confidence": 0.98,
+    "needs_review": false
+  },
+  {
+    "subject": "회로이론",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 17,
+    "source_no": 71,
+    "stem": "인덕턴스 회로에서 급격히 변할 수 없는 것은?",
+    "choices": [
+      "전압",
+      "전류",
+      "전압과 전류",
+      "해당 없음"
+    ],
+    "answer": 2,
+    "explanation": "v=L(di/dt)이므로 전류가 순간적으로 바뀌려면 무한대 전압이 필요하다. 따라서 인덕터 전류는 급변할 수 없다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기설비기술기준",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 21,
+    "source_no": 85,
+    "stem": "일반주택 및 아파트 각 호실의 현관등에 타임스위치를 설치할 때 몇 분 이내에 소등되어야 하는가?",
+    "choices": [
+      "1분",
+      "3분",
+      "5분",
+      "7분"
+    ],
+    "answer": 2,
+    "explanation": "일반주택 및 아파트 각 호실의 현관등은 타임스위치에 의해 3분 이내에 소등되어야 한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기설비기술기준",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 21,
+    "source_no": 86,
+    "stem": "전차선로에서 귀선로를 구성하는 것이 아닌 것은?",
+    "choices": [
+      "보호도체",
+      "비절연보호도체",
+      "매설접지도체",
+      "레일"
+    ],
+    "answer": 1,
+    "explanation": "귀선로는 비절연보호도체, 매설접지도체, 레일 등으로 구성한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기설비기술기준",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 21,
+    "source_no": 87,
+    "stem": "저압 옥내배선에 사용하는 전선은 단면적 몇 mm² 이상의 연동선 또는 이와 동등 이상의 것을 사용해야 하는가?",
+    "choices": [
+      "0.75 mm²",
+      "2 mm²",
+      "2.5 mm²",
+      "6 mm²"
+    ],
+    "answer": 3,
+    "explanation": "저압 옥내배선은 단면적 2.5 mm² 이상의 연동선 또는 이와 동등 이상의 강도와 굵기의 전선을 사용한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기설비기술기준",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 22,
+    "source_no": 92,
+    "stem": "태양광발전설비에서 주택의 태양전지모듈에 접속하는 부하측 옥내배선의 대지전압은 직류 몇 V 이하여야 하는가?",
+    "choices": [
+      "250 V",
+      "300 V",
+      "400 V",
+      "600 V"
+    ],
+    "answer": 4,
+    "explanation": "주택 태양전지모듈에 접속하는 부하측 옥내배선의 대지전압은 직류 600 V 이하로 제한한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  },
+  {
+    "subject": "전기설비기술기준",
+    "source_doc": "2025년 1회.goodnotes",
+    "source_page": 23,
+    "source_no": 94,
+    "stem": "가공전선로 지지물에 시설하는 지지선의 안전율은 일반적으로 얼마 이상이어야 하는가?",
+    "choices": [
+      "2.0",
+      "2.17",
+      "2.2",
+      "2.5"
+    ],
+    "answer": 4,
+    "explanation": "가공전선로 지지물에 시설하는 지지선의 안전율은 일반적으로 2.5 이상이어야 한다.",
+    "confidence": 0.99,
+    "needs_review": false
+  }
+]
