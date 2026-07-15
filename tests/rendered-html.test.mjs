@@ -284,5 +284,6 @@ test("provides installable PWA shell and IndexedDB local exam persistence", asyn
   assert.match(scratchpadDatabase, /writeQueues/);
   assert.match(styles, /max-width: 1366px/);
   assert.match(styles, /has-pencil-scratchpad/);
+  assert.match(styles, /\.online-exam > \*,[\s\S]*?min-width: 0;/);
   assert.match(shell, /href: "\/offline"/);
 });

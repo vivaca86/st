@@ -2374,6 +2374,12 @@ p {
     padding-bottom: 94px;
   }
 
+  .online-exam > *,
+  .online-exam .exam-layout > *,
+  .online-exam-topbar > * {
+    min-width: 0;
+  }
+
   .online-exam-topbar {
     position: sticky;
     top: 68px;
