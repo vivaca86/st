@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { AppShell } from "../components/AppShell";
+import { ServiceWorkerRegistrar } from "../components/ServiceWorkerRegistrar";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -23,6 +24,12 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description:
       "전기기사 5과목 문제은행, 100문제 모의고사, 중요문제와 공식·이론 암기노트",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "전산기 100",
+    },
     openGraph: {
       title: "전산기 100",
       description: "노트에서 문제은행까지, 5과목을 한 번에 푸는 전기기사 학습실",
@@ -44,6 +51,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ko">
       <body>
         <AppShell>{children}</AppShell>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

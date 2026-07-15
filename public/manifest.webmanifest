@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "전산기 100",
+  "short_name": "전산기100",
+  "description": "전기기사 5과목 문제은행과 오프라인 모의고사",
+  "lang": "ko",
+  "start_url": "/offline",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f5f1",
+  "theme_color": "#102944",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

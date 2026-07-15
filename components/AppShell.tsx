@@ -8,6 +8,7 @@ const navigation = [
   { href: "/exam", label: "100문제", glyph: "100" },
   { href: "/formulas", label: "공식·이론", glyph: "ƒ" },
   { href: "/review", label: "중요문제", glyph: "★" },
+  { href: "/offline", label: "오프라인", glyph: "↓" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -59,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="brand-mark">전</span>
             <strong>전산기 100</strong>
           </Link>
-          <span className="status-pill"><i /> DB 준비 중</span>
+          <Link className="status-pill" href="/offline"><i /> 오프라인</Link>
         </header>
         <main className="page-content">{children}</main>
       </div>

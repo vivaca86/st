@@ -52,3 +52,74 @@ export type StudyItemDto = {
   frequency: number;
   importanceCount: number;
 };
+
+export type OfflinePackAsset = {
+  id: string;
+  path: string;
+  mimeType: string;
+  bytes: number;
+  sha256: string;
+  required: boolean;
+};
+
+export type OfflineQuestion = {
+  id: string;
+  subjectCode: string;
+  sourceDocument: string;
+  sourcePage: number | null;
+  sourceQuestionNo: string | null;
+  stem: string;
+  choices: string[];
+  answerIndex: number;
+  explanation: string;
+  duplicateGroupId: string;
+  importanceScore: number;
+  assetIds: string[];
+};
+
+export type OfflineStudyItem = StudyItemDto & {
+  canonicalKey: string;
+};
+
+export type OfflinePack = {
+  schemaVersion: 1;
+  version: string;
+  publishedAt: string;
+  title: string;
+  minimumAppVersion: string;
+  subjects: Array<{
+    code: string;
+    name: string;
+    displayOrder: number;
+    questionCount: number;
+  }>;
+  questions: OfflineQuestion[];
+  studyItems: OfflineStudyItem[];
+  assetManifest: {
+    version: 1;
+    strategy: "on-demand";
+    baseUrl: string;
+    totalBytes: number;
+    assets: OfflinePackAsset[];
+  };
+};
+
+export type OfflineExamSession = {
+  id: string;
+  packVersion: string;
+  createdAt: string;
+  questionIds: string[];
+  answers: Record<string, number>;
+  currentIndex: number;
+};
+
+export type OfflineAttempt = {
+  id: string;
+  packVersion: string;
+  completedAt: string;
+  questionIds: string[];
+  answers: Record<string, number>;
+  correctCount: number;
+  totalQuestions: number;
+  score: number;
+};

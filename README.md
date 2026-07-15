@@ -1,98 +1,67 @@
-# vinext-starter
+# 전산기 100
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+전기기사 필기 5과목을 실제 시험 구성처럼 연습하기 위한 문제은행 웹앱입니다.
 
-## Prerequisites
+- 전기자기학
+- 전기기기
+- 전력공학
+- 회로이론
+- 전기설비기술기준
 
-- Node.js `>=22.13.0`
+## 주요 기능
 
-## Quick Start
+- 과목별 균등 랜덤 출제
+- 5과목 × 20문제, 총 100문제 실전 모드
+- 미니 모의고사와 중요문제 집중 모드
+- 답안 저장, 채점, 과목별 점수, 오답 해설
+- 필기 문제번호와 별표·빈출 표시를 연결하는 검수 화면
+- 중복 문제 유형을 합친 공식·이론 출제 빈도 암기장
+- PWA 설치 및 내려받은 문제팩을 이용한 오프라인 풀이
+
+현재 저장된 검증 문제는 과목별 5개, 총 25개입니다. 실전 100문제 모드는 각 과목에 중복 제거된 검증 문제가 20개 이상 모이면 자동으로 활성화됩니다.
+
+## 오프라인 사용
+
+1. 인터넷에 연결된 상태에서 앱의 `오프라인` 화면을 엽니다.
+2. `오프라인 문제팩 받기`를 눌러 최신 검증 문제와 공식·이론을 기기에 저장합니다.
+3. 브라우저의 앱 설치 기능으로 PWA를 설치합니다.
+4. 이후 인터넷이 없어도 로컬 시험, 답안 이어풀기, 채점과 오답 확인을 사용할 수 있습니다.
+
+문제팩은 실제 D1 DB에서 `verified` 상태이며 정답이 있는 문제만 내보냅니다. 사용자 시험 기록이나 온라인 풀이 기록은 문제팩에 포함하지 않습니다. 로컬 채점을 위해 정답과 해설이 들어 있으므로 보안 시험용이 아닌 개인 자기학습용입니다.
+
+현재 문제 이미지는 문제팩에 포함되지 않으며, 추후 R2 이미지 자산을 붙일 수 있도록 버전형 `assetManifest` 구조만 준비되어 있습니다.
+
+## 로컬 실행
+
+Node.js `22.13.0` 이상이 필요합니다.
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+검증 명령:
 
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm test
+npm run lint
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## 데이터 구조
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+- Cloudflare D1: 과목, 문제, 중요 표시, 공식·이론, 시험과 풀이 기록
+- IndexedDB: 내려받은 오프라인 문제팩, 진행 중 로컬 시험, 로컬 풀이 결과
+- Cache Storage: PWA 앱 셸과 방문한 정적 자산
+- R2 `QUESTION_ASSETS`: 문제·필기 이미지 확장용 바인딩
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+Drizzle 스키마는 `db/schema.ts`, 초기 마이그레이션은 `drizzle/`, GoodNotes 추출 파이프라인은 `scripts/import-goodnotes.mjs`에 있습니다.
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+## 현재 데이터 진행 상황
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+- 검증 완료 문제: 25개
+- OCR 검수 후보: 644개
+- 원본에서 추정한 초기 문제 후보: 약 2,982개
+- 문제번호와 구조적으로 연결된 필기 페이지: 846 / 877
+- 현재 연결된 공식·이론 카드: 8개
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+OCR 후보는 정답과 수식을 사람이 확인하기 전까지 실전 출제에 사용하지 않습니다.

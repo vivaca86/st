@@ -83,10 +83,65 @@ test("provides every API route and both persistence bindings", async () => {
     "app/api/exams/[id]/submit/route.ts",
     "app/api/study-items/route.ts",
     "app/api/review/route.ts",
+    "app/api/offline-pack/route.ts",
   ];
   await Promise.all(routes.map((route) => access(new URL(route, root))));
 
   const hosting = JSON.parse(await source(".openai/hosting.json"));
   assert.equal(hosting.d1, "DB");
   assert.equal(hosting.r2, "QUESTION_ASSETS");
+});
+
+test("ships a versioned D1-backed offline problem pack without user attempts", async () => {
+  const [route, types] = await Promise.all([
+    source("app/api/offline-pack/route.ts"),
+    source("lib/types.ts"),
+  ]);
+
+  assert.match(route, /ensureDatabase\(\)/);
+  assert.match(route, /q\.review_status = 'verified'/);
+  assert.match(route, /q\.answer_index IS NOT NULL/);
+  assert.match(route, /contentVersion/);
+  assert.match(route, /assetManifest/);
+  assert.doesNotMatch(route, /seed-questions\.json/);
+  assert.doesNotMatch(route, /FROM attempts/);
+  assert.doesNotMatch(route, /FROM exam_sessions/);
+  assert.match(route, /"Cache-Control": "private, no-store"/);
+  assert.match(types, /schemaVersion: 1/);
+  assert.match(types, /answerIndex: number/);
+  assert.match(types, /assets: OfflinePackAsset\[\]/);
+});
+
+test("provides installable PWA shell and IndexedDB local exam persistence", async () => {
+  const [manifest, worker, offlinePage, offlineDatabase, shell] = await Promise.all([
+    source("public/manifest.webmanifest"),
+    source("public/sw.js"),
+    source("components/OfflineWorkspace.tsx"),
+    source("lib/offline-db.ts"),
+    source("components/AppShell.tsx"),
+  ]);
+
+  const parsedManifest = JSON.parse(manifest);
+  assert.equal(parsedManifest.display, "standalone");
+  assert.equal(parsedManifest.start_url, "/offline");
+  assert.match(worker, /const RELEASE_ID = "2026-07-15-offline-v2"/);
+  assert.match(worker, /const SHELL_CACHE = `jeonsangi-shell-\$\{RELEASE_ID\}`/);
+  assert.match(worker, /const PACK_CACHE = `jeonsangi-pack-\$\{RELEASE_ID\}`/);
+  assert.match(worker, /cache\.addAll\(APP_SHELL\)/);
+  assert.match(worker, /caches\.open\(PACK_CACHE\)/);
+  assert.doesNotMatch(worker, /skipWaiting/);
+  assert.match(offlineDatabase, /indexedDB\.open/);
+  assert.match(offlineDatabase, /saveOfflineSession/);
+  assert.match(offlineDatabase, /getOfflinePackByVersion/);
+  assert.match(offlineDatabase, /completeOfflineExam/);
+  assert.match(offlineDatabase, /database\.transaction\(\[ATTEMPTS_STORE, SESSIONS_STORE\], "readwrite"\)/);
+  assert.doesNotMatch(offlineDatabase, /objectStore\(PACKS_STORE\)\.clear\(\)/);
+  assert.match(offlineDatabase, /deleteOfflineData/);
+  assert.ok(
+    offlinePage.indexOf("await completeOfflineExam(attempt)") <
+      offlinePage.indexOf("setResult(nextResult)"),
+  );
+  assert.match(offlinePage, /startExam\(20\)/);
+  assert.match(offlinePage, /개인 학습용/);
+  assert.match(shell, /href: "\/offline"/);
 });
