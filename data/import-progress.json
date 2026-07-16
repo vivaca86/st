@@ -1,0 +1,31 @@
+{
+  "_readme": "문제 임포트 진행 상황. 작업 방법은 docs/question-import.md 를 먼저 읽을 것. 파일 하나 끝낼 때마다 done 에 추가하고 questions 수를 기록한다. 세션이 끊겨도 이 파일을 보면 이어서 할 수 있다.",
+  "source_root": "Backup 2026-07-15/전산기",
+  "total_files": 108,
+  "total_pages": 1389,
+  "estimated_questions": 4100,
+  "merged_into_seed": false,
+  "done": [],
+  "in_progress": {
+    "file": "전기자기/12.전자계.goodnotes",
+    "slug": "12.전자계",
+    "pages": 18,
+    "pages_done": [1, 2],
+    "questions_so_far": 8,
+    "output": "work-import/parsed/12.전자계.json",
+    "note": "파일럿. 3페이지부터 이어서 하면 됨."
+  },
+  "measured": {
+    "page_tokens_150dpi": 2300,
+    "page_tokens_200dpi": 4100,
+    "questions_per_page": 4,
+    "figure_dependent_ratio": "8문제 중 1문제 (표본 작음, 계속 측정할 것)"
+  },
+  "notes": [
+    "seed-questions.json 의 기존 100개는 2025년 1회 한 회차를 사람이 손으로 옮긴 것.",
+    "텍스트 레이어 파싱은 수율 2%로 실패 확정. 스캔 이미지만 신뢰할 것.",
+    "정답은 인쇄되어 있으므로 판독만 한다. 절대 추론하지 말 것.",
+    "그림 의존 문제는 앱이 이미지를 지원하지 않으므로 needs_review 로 격리한다.",
+    "수식 판독은 검증됨. ∂D/∂t, ωCV_m sin(ωt+π/2) 수준까지 정확히 옮겨진다."
+  ]
+}

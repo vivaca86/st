@@ -39,6 +39,11 @@ dev.err.log
 # typescript
 next-env.d.ts
 *.tsbuildinfo
+
+# GoodNotes source archives (~2.5GB) and rendered page images.
+# Source of truth for the question bank, kept local only.
+/Backup*/
+/work-import/
 /dist/
 /.wrangler/
 /outputs/
